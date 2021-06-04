@@ -20,6 +20,7 @@
 
 import argcomplete
 import argparse
+import collections
 import configparser
 import os
 import json
@@ -114,15 +115,15 @@ def download_file(url, local_filename=None, dldir='tmp'):
     return local_filename
 
 
-def get_properties_dict(k, d):
-    config = configparser.ConfigParser()
-    config.read_string('[DEFAULT]\n' + d[k])
+def get_properties_dict(string):
+    config = configparser.ConfigParser(delimiters=('='))
+    config.read_string('[DEFAULT]\n' + string)
     return dict(config.items('DEFAULT'))
 
 
 def parse_ndk(url, d):
     if 'source.properties' in d:
-        source_properties = get_properties_dict('source.properties', d)
+        source_properties = get_properties_dict(d['source.properties'])
         revision = source_properties['pkg.revision']
         for k in ('ndk', 'ndk-bundle'):
             key = (k, revision)
@@ -137,11 +138,45 @@ def parse_ndk(url, d):
 
 def parse_build_tools(url, d):
     if 'source.properties' in d:
-        source_properties = get_properties_dict('source.properties', d)
+        source_properties = get_properties_dict(d['source.properties'])
         revision = source_properties['pkg.revision'].replace(' ', '-')
         key = ('build-tools', revision)
         if key not in packages:
             packages[key] = url
+
+
+def parse_repositories_cfg(f):
+    """parse the supplied repositories.cfg and return a list of URLs"""
+    with open(f) as fp:
+        data = get_properties_dict(fp.read())
+
+    disabled = set()
+    for k, v in data.items():
+        if k.startswith('@disabled@'):
+            if v == 'disabled':
+                url = k.split('@')[2]
+                disabled.add(url)
+
+    count = int(data.get('count', '0'))
+    i = 0
+    repositories = []
+    while i < count:
+        d = dict()
+        for k in ('disp', 'dist', 'enabled', 'src'):
+            key_i = '%s%02d' % (k, i)
+            if data.get(key_i):
+                d[k] = data[key_i]
+        if d[k] not in disabled:
+            repositories.append(d)
+        i += 1
+    enabled_repositories = []
+    for d in repositories:
+        v = d.get('enabled', 'true')
+        if v == 'true':
+            url = d.get('src', '').replace('\\', '')
+            if url and url not in enabled_repositories:
+                enabled_repositories.append(url)
+    return enabled_repositories
 
 
 # TODO allow : and - as separator, e.g. ndk-22.1.7171670
