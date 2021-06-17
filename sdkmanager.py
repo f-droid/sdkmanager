@@ -61,7 +61,7 @@ INSTALL_DIRS = {
 }
 
 USAGE = """
-Usage: 
+Usage:
   sdkmanager [--uninstall] [<common args>] [--package_file=<file>] [<packages>...]
   sdkmanager --update [<common args>]
   sdkmanager --list [<common args>]
@@ -90,7 +90,7 @@ With --licenses, show and offer the option to accept licenses for all
 With --version, prints the current version of sdkmanager.
 
 Common Arguments:
-    --sdk_root=<sdkRootPath>: Use the specified SDK root instead of the SDK 
+    --sdk_root=<sdkRootPath>: Use the specified SDK root instead of the SDK
                               containing this tool
 
     --channel=<channelId>: Include packages in channels up to <channelId>.
