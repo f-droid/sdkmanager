@@ -212,9 +212,11 @@ def parse_repositories_cfg(f):
 # only use android-sdk-transparency-log as source
 def build_package_list(use_net=False):
     cached_checksums = CACHEDIR / os.path.basename(CHECKSUMS_URL)
-    if os.path.exists(cached_checksums):
+    if cached_checksums.exists():
         with open(cached_checksums) as fp:
             _process_checksums(json.load(fp))
+    else:
+        use_net = True  # need to fetch checksums.json, no cached version
 
     etag_file = cached_checksums.parent / (cached_checksums.name + '.etag')
     if etag_file.exists():
@@ -347,7 +349,6 @@ def main():
     ANDROID_SDK_ROOT.mkdir(exist_ok=True)
 
     CACHEDIR.mkdir(mode=0o0700, parents=True, exist_ok=True)
-    build_package_list()
 
     parser = argparse.ArgumentParser()
     # commands
@@ -388,13 +389,18 @@ def main():
             command = k
     if command is None:
         command = 'install'
+    elif command == 'version':
+        print('25.2.0')
+        exit()
 
     method = globals().get(command)
     if not method:
         raise NotImplementedError('Command "--%s" not implemented' % command)
-    if command in ('install', 'install'):
+    if command in ('install', 'uninstall'):
+        build_package_list(use_net=False)
         method(args.packages)
     else:
+        build_package_list(use_net=True)
         method()
 
 
