@@ -212,7 +212,7 @@ def parse_repositories_cfg(f):
 def build_package_list(use_net=False):
     cached_checksums = CACHEDIR / os.path.basename(CHECKSUMS_URL)
     if cached_checksums.exists():
-        with open(cached_checksums) as fp:
+        with cached_checksums.open() as fp:
             _process_checksums(json.load(fp))
     else:
         use_net = True  # need to fetch checksums.json, no cached version
