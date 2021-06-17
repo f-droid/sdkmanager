@@ -27,6 +27,7 @@ import json
 import re
 import requests
 import requests_cache
+from pathlib import Path
 
 
 COMPATIBLE_VERSION = '26.1.1'
@@ -37,7 +38,7 @@ CHECKSUMS_URL = (
 
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
 
-CACHEDIR = os.path.join(os.getenv('HOME'), '.cache', os.path.basename(__file__))
+CACHEDIR = Path.home() / '.cache/sdkmanager'
 
 BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
 NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?')
@@ -103,7 +104,7 @@ packages = dict()
 def download_file(url, local_filename=None, dldir='tmp'):
     filename = url.split('/')[-1]
     if local_filename is None:
-        local_filename = os.path.join(dldir, filename)
+        local_filename = dldir / filename
     # the stream=True parameter keeps memory usage low
     r = requests.get(url, stream=True, allow_redirects=True, headers=HEADERS)
     r.raise_for_status()
@@ -183,11 +184,11 @@ def parse_repositories_cfg(f):
 # verify GPG signature
 # only use android-sdk-transparency-log as source
 def build_package_list(use_net=False):
-    cached_checksums = os.path.join(CACHEDIR, os.path.basename(CHECKSUMS_URL))
+    cached_checksums = CACHEDIR / os.path.basename(CHECKSUMS_URL)
     if os.path.exists(cached_checksums):
         with open(cached_checksums) as fp:
             checksums = json.load(fp)
-    requests_cache.install_cache(CACHEDIR)
+    requests_cache.install_cache(str(CACHEDIR))
     r = requests.get(CHECKSUMS_URL)
     r.raise_for_status()
     checksums = r.json()
@@ -202,14 +203,12 @@ def build_package_list(use_net=False):
             # print(os.path.basename(k), checksums[k])
             parse_ndk(url, checksums[url][0])
 
-    import pprint
 
-    pprint.pprint(packages)
 
 
 def list():
     global packages
-    print(type(packages))
+
     path_width = 0
     names = []
     for package in packages:
@@ -231,8 +230,9 @@ def list():
 
 
 def main():
+    CACHEDIR.mkdir(mode=0o0700, parents=True, exist_ok=True)
     build_package_list()
-    # TODO  then feed as argument options
+
     parser = argparse.ArgumentParser()
     # commands
     parser.add_argument("--install", action="store_true")
