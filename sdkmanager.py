@@ -22,12 +22,19 @@ import argcomplete
 import argparse
 import collections
 import configparser
+import glob
+import io
 import os
 import json
 import re
 import requests
 import requests_cache
+import shutil
+import stat
+import tempfile
+import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 COMPATIBLE_VERSION = '26.1.1'
@@ -39,9 +46,21 @@ CHECKSUMS_URL = (
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
 
 CACHEDIR = Path.home() / '.cache/sdkmanager'
+ANDROID_SDK_ROOT = os.getenv(
+    'ANDROID_SDK_ROOT', os.getenv('ANDROID_HOME', '/opt/android-sdk')
+)
 
 BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
 NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?')
+
+# The sub-directory to install a given package into, assumes ANDROID_SDK_ROOT as root
+INSTALL_DIRS = {
+    'build-tools': 'build-tools/{revision}',
+    'cmake': 'cmake/{revision}',
+    'ndk': 'ndks/{revision}',
+    'ndk-bundle': 'ndk-bundle',
+    'platform-tools': 'platform-tools',
+}
 
 USAGE = """
 Usage: 
@@ -101,15 +120,16 @@ Common Arguments:
 packages = dict()
 
 
-def download_file(url, local_filename=None, dldir='tmp'):
-    filename = url.split('/')[-1]
+def download_file(url, local_filename=None, dldir=CACHEDIR):
+    filename = os.path.basename(urlparse(url).path)
     if local_filename is None:
         local_filename = dldir / filename
+    print('Downloading', url, 'into', local_filename)
     # the stream=True parameter keeps memory usage low
-    r = requests.get(url, stream=True, allow_redirects=True, headers=HEADERS)
+    r = requests.get(url, stream=True, allow_redirects=True, headers=HTTP_HEADERS)
     r.raise_for_status()
-    with open(local_filename, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024):
+    with local_filename.open('wb') as f:
+        for chunk in r.iter_content(chunk_size=io.DEFAULT_BUFFER_SIZE):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
                 f.flush()
@@ -200,10 +220,65 @@ def build_package_list(use_net=False):
         if os.path.basename(url).startswith('build-tools'):
             parse_build_tools(url, checksums[url][-1])
         elif 'ndk-' in url:
-            # print(os.path.basename(k), checksums[k])
             parse_ndk(url, checksums[url][0])
 
 
+def install(to_install):
+    """Install specified packages, including downloading them as needed
+
+    Parameters
+    ----------
+
+    to_install
+        A single package or list of packages to install.
+    """
+    global packages
+
+    if isinstance(to_install, str):
+        to_install = [to_install]
+    for package in to_install:
+        key = tuple(package.split(';'))
+        url = packages[key]
+        zipball = CACHEDIR / os.path.basename(url)
+        if not zipball.exists():
+            download_file(url, zipball)
+        install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[key[0]].format(revision=key[1])
+        install_dir.parent.mkdir(exist_ok=True)
+        _install_zipball_from_cache(zipball, install_dir)
+
+
+def _install_zipball_from_cache(zipball, install_dir):
+    unzip_dir = tempfile.mkdtemp(prefix='.sdkmanager-')
+
+    print('Unzipping to %s' % unzip_dir)
+    toplevels = set()
+    try:
+        with zipfile.ZipFile(str(zipball)) as zipfp:
+            for info in zipfp.infolist():
+                permbits = info.external_attr >> 16
+                zipfp.extract(info.filename, path=unzip_dir)
+                writefile = os.path.join(unzip_dir, info.filename)
+                if stat.S_ISDIR(permbits) or stat.S_IXUSR & permbits:
+                    os.chmod(writefile, 0o755)  # nosec bandit B103
+                else:
+                    os.chmod(writefile, 0o644)  # nosec bandit B103
+            toplevels.update([p.split('/')[0] for p in zipfp.namelist()])
+    except zipfile.BadZipFile as e:
+        print('ERROR:', e)
+        if zipball.exists():
+            zipball.unlink()
+        return
+
+    print('Installing into', install_dir)
+    if len(toplevels) == 1:
+        for extracted in glob.glob(os.path.join(unzip_dir, '*')):
+            shutil.move(str(extracted), str(install_dir))
+    else:
+        install_dir.mkdir(parents=True)
+        for extracted in glob.glob(os.path.join(unzip_dir, '*')):
+            shutil.move(extracted, str(install_dir))
+    if zipball.exists():
+        zipball.unlink()
 
 
 def list():
@@ -230,6 +305,15 @@ def list():
 
 
 def main():
+    global CACHEDIR, ANDROID_SDK_ROOT, ANDROID_NDK_ROOT
+
+    if ANDROID_SDK_ROOT:
+        ANDROID_SDK_ROOT = Path(ANDROID_SDK_ROOT)
+    if not ANDROID_SDK_ROOT.parent.exists():
+        print(__file__, 'writes into $ANDROID_SDK_ROOT but it does not exist!')
+        exit(1)
+    ANDROID_SDK_ROOT.mkdir(exist_ok=True)
+
     CACHEDIR.mkdir(mode=0o0700, parents=True, exist_ok=True)
     build_package_list()
 
@@ -253,6 +337,9 @@ def main():
     parser.add_argument(
         "--verbose", action="store_true", help="increase output verbosity"
     )
+
+    parser.add_argument('packages', nargs='*')
+
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
@@ -272,8 +359,11 @@ def main():
 
     method = globals().get(command)
     if not method:
-        raise NotImplementedError("Command %s not implemented" % command)
-    method()
+        raise NotImplementedError('Command "--%s" not implemented' % command)
+    if command in ('install', 'install'):
+        method(args.packages)
+    else:
+        method()
 
 
 if __name__ == "__main__":
