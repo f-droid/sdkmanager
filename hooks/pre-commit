@@ -1,0 +1,104 @@
+#!/bin/bash
+#
+# Simple pre-commit hook to check that there are no errors in the fdroidserver
+# source files.
+
+# Redirect output to stderr.
+exec 1>&2
+
+files=`git diff-index --cached HEAD 2>&1 | sed 's/^:.*     //' | uniq | cut -b100-500`
+if [ -z "$files" ]; then
+    PY_FILES="*.py"
+    SH_FILES="hooks/pre-commit"
+else
+    # if actually committing right now, then only run on the files
+    # that are going to be committed at this moment
+    PY_FILES=
+    SH_FILES=
+    BASH_FILES=
+
+    for f in $files; do
+        test -e $f || continue
+        case $f in
+            *.py)
+                PY_FILES+=" $f"
+                ;;
+            *)
+                if head -1 $f | grep '^#!/bin/sh' > /dev/null 2>&1; then
+                    SH_FILES+=" $f"
+                elif head -1 $f | grep '^#!/bin/bash' > /dev/null 2>&1; then
+                    BASH_FILES+=" $f"
+                elif head -1 $f | grep '^#!.*python' > /dev/null 2>&1; then
+                    PY_FILES+=" $f"
+                fi
+                ;;
+        esac
+    done
+fi
+
+# We ignore the following PEP8 warnings
+# * E501: line too long (82 > 79 characters)
+#   - Recommended for readability but not enforced
+#   - Some lines are awkward to wrap around a char limit
+# * W503: line break before binary operator
+#   - Quite pedantic
+
+PEP8_IGNORE="E501,W503"
+
+err() {
+	echo >&2 ERROR: "$@"
+	exit 1
+}
+
+warn() {
+	echo >&2 WARNING: "$@"
+}
+
+cmd_exists() {
+	command -v $1 1>/dev/null
+}
+
+find_command() {
+	for name in $@; do
+		for suff in "3" "-3" "-python3" ""; do
+			cmd=${name}${suff}
+			if cmd_exists $cmd; then
+				echo $cmd
+				return 0
+			fi
+		done
+	done
+	warn "$1 is not installed, using dummy placeholder!"
+	echo :
+}
+
+DASH=$(find_command dash)
+PYFLAKES=$(find_command pyflakes)
+PEP8=$(find_command pycodestyle pep8)
+RUBY=$(find_command ruby)
+
+if [ "$PY_FILES" != " " ]; then
+    if ! $PYFLAKES $PY_FILES; then
+	err "pyflakes tests failed!"
+    fi
+    # The tests use a little hack in order to cleanly import the fdroidserver
+    # package locally like a regular package.  pep8 doesn't see that, so this
+    # makes pep8 skip E402 on the test files that need that hack.
+    if ! $PEP8 --ignore=$PEP8_IGNORE,E402 $PY_FILES; then
+	err "pep8 tests failed!"
+    fi
+fi
+
+for f in $SH_FILES; do
+	if ! $DASH -n $f; then
+		err "dash tests failed!"
+	fi
+done
+
+for f in $BASH_FILES; do
+	if ! bash -n $f; then
+		err "bash tests failed!"
+	fi
+done
+
+exit 0
