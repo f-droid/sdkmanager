@@ -49,11 +49,7 @@ setup(
     scripts=['sdkmanager.py'],
     python_requires='>=3.5',
     cmdclass={'versioncheck': VersionCheckCommand},
-    install_requires=[
-        'argcomplete',
-        'requests > 2.12.2, != 2.18.0',
-        'requests-cache >= 0.4.13',
-    ],
+    install_requires=['argcomplete', 'requests > 2.12.2, != 2.18.0'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

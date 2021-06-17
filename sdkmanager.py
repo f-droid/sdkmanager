@@ -28,7 +28,6 @@ import os
 import json
 import re
 import requests
-import requests_cache
 import shutil
 import stat
 import tempfile
@@ -215,12 +214,32 @@ def build_package_list(use_net=False):
     cached_checksums = CACHEDIR / os.path.basename(CHECKSUMS_URL)
     if os.path.exists(cached_checksums):
         with open(cached_checksums) as fp:
-            checksums = json.load(fp)
-    requests_cache.install_cache(str(CACHEDIR))
-    r = requests.get(CHECKSUMS_URL)
-    r.raise_for_status()
-    checksums = r.json()
+            _process_checksums(json.load(fp))
 
+    etag_file = cached_checksums.parent / (cached_checksums.name + '.etag')
+    if etag_file.exists():
+        etag = etag_file.read_text()
+        HTTP_HEADERS['If-None-Match'] = etag
+    else:
+        etag = None
+
+    if use_net:
+        try:
+            r = requests.get(CHECKSUMS_URL, allow_redirects=True, headers=HTTP_HEADERS)
+        except ValueError as e:
+            if etag_file.exists():
+                etag_file.unlink()
+            print('ERROR:', e)
+            exit(1)
+        r.raise_for_status()
+
+        if etag is None or etag != r.headers.get('etag'):
+            cached_checksums.write_bytes(r.content)
+            etag_file.write_text(r.headers['etag'])
+            _process_checksums(r.json())
+
+
+def _process_checksums(checksums):
     for url in checksums.keys():
         if not url.endswith('.zip'):
             continue
