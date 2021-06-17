@@ -142,6 +142,23 @@ def get_properties_dict(string):
     return dict(config.items('DEFAULT'))
 
 
+def parse_build_tools(url, d):
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        revision = source_properties['pkg.revision'].replace(' ', '-')
+        key = ('build-tools', revision)
+        if key not in packages:
+            packages[key] = url
+
+
+def parse_cmake(url, d):
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        key = tuple(source_properties['pkg.path'].split(';'))
+        if key not in packages:
+            packages[key] = url
+
+
 def parse_ndk(url, d):
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
@@ -155,15 +172,6 @@ def parse_ndk(url, d):
         release = m.group()
         packages[('ndk', release)] = url
         packages[('ndk-bundle', release)] = url
-
-
-def parse_build_tools(url, d):
-    if 'source.properties' in d:
-        source_properties = get_properties_dict(d['source.properties'])
-        revision = source_properties['pkg.revision'].replace(' ', '-')
-        key = ('build-tools', revision)
-        if key not in packages:
-            packages[key] = url
 
 
 def parse_repositories_cfg(f):
@@ -217,8 +225,13 @@ def build_package_list(use_net=False):
         if not url.endswith('.zip'):
             continue
 
-        if os.path.basename(url).startswith('build-tools'):
-            parse_build_tools(url, checksums[url][-1])
+        basename = os.path.basename(url)
+        if basename.startswith('build-tools'):
+            for entry in checksums[url]:
+                parse_build_tools(url, entry)
+        elif basename.startswith('cmake'):
+            for entry in checksums[url]:
+                parse_cmake(url, entry)
         elif 'ndk-' in url:
             parse_ndk(url, checksums[url][0])
 
