@@ -20,7 +20,6 @@
 
 import argcomplete
 import argparse
-import collections
 import configparser
 import glob
 import io
