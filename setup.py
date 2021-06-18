@@ -44,7 +44,7 @@ setup(
     long_description_content_type='text/markdown',
     author='The F-Droid Project',
     author_email='team@f-droid.org',
-    url='https://f-droid.org',
+    url='https://gitlab.com/fdroid/sdkmanager',
     license='AGPL-3.0',
     scripts=['sdkmanager.py'],
     python_requires='>=3.5',
