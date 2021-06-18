@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import sdkmanager
 import tempfile
@@ -38,6 +39,14 @@ class SdkManagerTest(unittest.TestCase):
             ],
             rc,
         )
+
+    @unittest.skipUnless(
+        sdkmanager.CACHED_CHECKSUMS.exists(), 'No cached checksums.json to work with.'
+    )
+    def test_process_checksums(self):
+        with sdkmanager.CACHED_CHECKSUMS.open() as fp:
+            sdkmanager._process_checksums(json.load(fp))
+        self.assertTrue(('tools',) in sdkmanager.packages)
 
     def test_main_args(self):
         for command in ['list', 'install']:

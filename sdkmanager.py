@@ -31,6 +31,7 @@ import shutil
 import stat
 import tempfile
 import zipfile
+from distutils.version import LooseVersion
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -44,6 +45,7 @@ CHECKSUMS_URL = (
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
 
 CACHEDIR = Path.home() / '.cache/sdkmanager'
+CACHED_CHECKSUMS = CACHEDIR / os.path.basename(CHECKSUMS_URL)
 ANDROID_SDK_ROOT = os.getenv(
     'ANDROID_SDK_ROOT', os.getenv('ANDROID_HOME', '/opt/android-sdk')
 )
@@ -58,6 +60,7 @@ INSTALL_DIRS = {
     'ndk': 'ndks/{revision}',
     'ndk-bundle': 'ndk-bundle',
     'platform-tools': 'platform-tools',
+    'tools': 'tools',
 }
 
 USAGE = """
@@ -172,6 +175,27 @@ def parse_ndk(url, d):
         packages[('ndk-bundle', release)] = url
 
 
+def parse_tools(url, d):
+    """Find all tools packages and set highest version as 'tools'"""
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        path = source_properties.get('pkg.path')
+        if not path:
+            path = 'tools'
+        key = (path, source_properties.get('pkg.revision'))
+        if key not in packages:
+            packages[key] = url
+
+    highest = '0'
+    for key, url in packages.items():
+        if key[0] != 'tools' or len(key) < 2:
+            continue
+        version = key[-1]
+        if LooseVersion(version) > LooseVersion(highest):
+            highest = version
+    packages[('tools',)] = packages[('tools', highest)]
+
+
 def parse_repositories_cfg(f):
     """parse the supplied repositories.cfg and return a list of URLs"""
     with open(f) as fp:
@@ -210,14 +234,13 @@ def parse_repositories_cfg(f):
 # verify GPG signature
 # only use android-sdk-transparency-log as source
 def build_package_list(use_net=False):
-    cached_checksums = CACHEDIR / os.path.basename(CHECKSUMS_URL)
-    if cached_checksums.exists():
-        with cached_checksums.open() as fp:
+    if CACHED_CHECKSUMS.exists():
+        with CACHED_CHECKSUMS.open() as fp:
             _process_checksums(json.load(fp))
     else:
         use_net = True  # need to fetch checksums.json, no cached version
 
-    etag_file = cached_checksums.parent / (cached_checksums.name + '.etag')
+    etag_file = CACHED_CHECKSUMS.parent / (CACHED_CHECKSUMS.name + '.etag')
     if etag_file.exists():
         etag = etag_file.read_text()
         HTTP_HEADERS['If-None-Match'] = etag
@@ -235,7 +258,7 @@ def build_package_list(use_net=False):
         r.raise_for_status()
 
         if etag is None or etag != r.headers.get('etag'):
-            cached_checksums.write_bytes(r.content)
+            CACHED_CHECKSUMS.write_bytes(r.content)
             etag_file.write_text(r.headers['etag'])
             _process_checksums(r.json())
 
@@ -254,6 +277,9 @@ def _process_checksums(checksums):
                 parse_cmake(url, entry)
         elif 'ndk-' in url:
             parse_ndk(url, checksums[url][0])
+        elif basename.startswith('tools') or basename.startswith('sdk-tools-'):
+            for entry in checksums[url]:
+                parse_tools(url, entry)
 
 
 def install(to_install):
@@ -275,7 +301,11 @@ def install(to_install):
         zipball = CACHEDIR / os.path.basename(url)
         if not zipball.exists():
             download_file(url, zipball)
-        install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[key[0]].format(revision=key[1])
+        name = key[0]
+        if len(key) > 1:
+            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name].format(revision=key[-1])
+        else:
+            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name]
         install_dir.parent.mkdir(exist_ok=True)
         _install_zipball_from_cache(zipball, install_dir)
 
