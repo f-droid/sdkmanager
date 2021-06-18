@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Simple pre-commit hook to check that there are no errors in the fdroidserver
+# Simple pre-commit hook to check that there are no errors in the sdkmanager
 # source files.
 
 # Redirect output to stderr.
@@ -81,7 +81,7 @@ if [ "$PY_FILES" != " " ]; then
     if ! $PYFLAKES $PY_FILES; then
 	err "pyflakes tests failed!"
     fi
-    # The tests use a little hack in order to cleanly import the fdroidserver
+    # The tests use a little hack in order to cleanly import the sdkmanager
     # package locally like a regular package.  pep8 doesn't see that, so this
     # makes pep8 skip E402 on the test files that need that hack.
     if ! $PEP8 --ignore=$PEP8_IGNORE,E402 $PY_FILES; then
