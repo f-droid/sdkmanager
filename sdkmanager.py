@@ -175,6 +175,24 @@ def parse_ndk(url, d):
         packages[('ndk-bundle', release)] = url
 
 
+def parse_platform_tools(url, d):
+    """Find all platform-tools packages and set highest version as 'platform-tools'"""
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        key = ('platform-tools', source_properties.get('pkg.revision'))
+        if key not in packages:
+            packages[key] = url
+
+    highest = '0'
+    for key, url in packages.items():
+        if key[0] != 'platform-tools' or len(key) < 2:
+            continue
+        version = key[-1]
+        if LooseVersion(version) > LooseVersion(highest):
+            highest = version
+    packages[('platform-tools',)] = packages[('platform-tools', highest)]
+
+
 def parse_tools(url, d):
     """Find all tools packages and set highest version as 'tools'"""
     if 'source.properties' in d:
@@ -277,6 +295,9 @@ def _process_checksums(checksums):
                 parse_cmake(url, entry)
         elif 'ndk-' in url:
             parse_ndk(url, checksums[url][0])
+        elif basename.startswith('platform-tools'):
+            for entry in checksums[url]:
+                parse_platform_tools(url, entry)
         elif basename.startswith('tools') or basename.startswith('sdk-tools-'):
             for entry in checksums[url]:
                 parse_tools(url, entry)

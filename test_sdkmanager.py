@@ -47,6 +47,7 @@ class SdkManagerTest(unittest.TestCase):
         with sdkmanager.CACHED_CHECKSUMS.open() as fp:
             sdkmanager._process_checksums(json.load(fp))
         self.assertTrue(('tools',) in sdkmanager.packages)
+        self.assertTrue(('platform-tools',) in sdkmanager.packages)
 
     def test_main_args(self):
         for command in ['list', 'install']:
