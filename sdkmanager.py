@@ -59,6 +59,7 @@ INSTALL_DIRS = {
     'cmake': 'cmake/{revision}',
     'ndk': 'ndks/{revision}',
     'ndk-bundle': 'ndk-bundle',
+    'platforms': 'platforms/{revision}',
     'platform-tools': 'platform-tools',
     'tools': 'tools',
 }
@@ -173,6 +174,15 @@ def parse_ndk(url, d):
         release = m.group()
         packages[('ndk', release)] = url
         packages[('ndk-bundle', release)] = url
+
+
+def parse_platforms(url, d):
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        apilevel = source_properties['androidversion.apilevel']
+        # TODO this should make all versions/revisions available, not only most recent
+        key = ('platforms', 'android-%s' % apilevel)
+        packages[key] = url
 
 
 def parse_platform_tools(url, d):
@@ -298,6 +308,9 @@ def _process_checksums(checksums):
         elif basename.startswith('platform-tools'):
             for entry in checksums[url]:
                 parse_platform_tools(url, entry)
+        elif basename.startswith('android-') or basename.startswith('platform-'):
+            for entry in checksums[url]:
+                parse_platforms(url, entry)
         elif basename.startswith('tools') or basename.startswith('sdk-tools-'):
             for entry in checksums[url]:
                 parse_tools(url, entry)

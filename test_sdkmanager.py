@@ -48,6 +48,10 @@ class SdkManagerTest(unittest.TestCase):
             sdkmanager._process_checksums(json.load(fp))
         self.assertTrue(('tools',) in sdkmanager.packages)
         self.assertTrue(('platform-tools',) in sdkmanager.packages)
+        self.assertEqual(
+            'https://dl.google.com/android/repository/platform-29_r04.zip',
+            sdkmanager.packages[('platforms', 'android-29')],
+        )
 
     def test_main_args(self):
         for command in ['list', 'install']:
