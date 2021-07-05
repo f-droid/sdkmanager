@@ -334,11 +334,19 @@ def _process_checksums(checksums):
 def install(to_install):
     """Install specified packages, including downloading them as needed
 
+    Certain packages are installed into versioned sub-directories
+    while a couple of other are always installed into the same
+    location.  In those other cases, if that location exists, the
+    directory will be removed before installing the package.  These
+    installed packages will always contain at least
+    'source.properties'.
+
     Parameters
     ----------
 
     to_install
         A single package or list of packages to install.
+
     """
     global packages
 
@@ -351,10 +359,13 @@ def install(to_install):
         if not zipball.exists():
             download_file(url, zipball)
         name = key[0]
+        package_sub_dir = INSTALL_DIRS[name]
         if len(key) > 1:
-            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name].format(revision=key[-1])
+            install_dir = ANDROID_SDK_ROOT / package_sub_dir.format(revision=key[-1])
         else:
-            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name]
+            install_dir = ANDROID_SDK_ROOT / package_sub_dir
+        if '/' not in package_sub_dir and (install_dir / 'source.properties').exists():
+            shutil.rmtree(install_dir)
         install_dir.parent.mkdir(exist_ok=True)
         _install_zipball_from_cache(zipball, install_dir)
 
