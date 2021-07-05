@@ -57,6 +57,7 @@ NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?')
 INSTALL_DIRS = {
     'build-tools': 'build-tools/{revision}',
     'cmake': 'cmake/{revision}',
+    'emulator': 'emulator',
     'ndk': 'ndks/{revision}',
     'ndk-bundle': 'ndk-bundle',
     'platforms': 'platforms/{revision}',
@@ -159,6 +160,17 @@ def parse_cmake(url, d):
         key = tuple(source_properties['pkg.path'].split(';'))
         if key not in packages:
             packages[key] = url
+
+
+def parse_emulator(url, d):
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        key = tuple(source_properties['pkg.path'].split(';'))
+        if key not in packages:
+            packages[key] = url
+        versioned = (key[0], source_properties['pkg.revision'])
+        if versioned not in packages:
+            packages[versioned] = url
 
 
 def parse_ndk(url, d):
@@ -303,6 +315,9 @@ def _process_checksums(checksums):
         elif basename.startswith('cmake'):
             for entry in checksums[url]:
                 parse_cmake(url, entry)
+        elif basename.startswith('emulator'):
+            for entry in checksums[url]:
+                parse_emulator(url, entry)
         elif 'ndk-' in url:
             parse_ndk(url, checksums[url][0])
         elif basename.startswith('platform-tools'):
