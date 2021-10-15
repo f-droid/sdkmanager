@@ -18,7 +18,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import argcomplete
 import argparse
 import configparser
 import glob
@@ -462,9 +461,14 @@ def main():
 
     parser.add_argument('packages', nargs='*')
 
-    argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    # do not require argcomplete to keep the install profile light
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
 
+    args = parser.parse_args()
     command = None
     for k in ('install', 'licenses', 'list', 'uninstall', 'update', 'version'):
         if args.__dict__[k]:
