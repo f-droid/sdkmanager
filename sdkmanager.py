@@ -464,6 +464,7 @@ def main():
     # do not require argcomplete to keep the install profile light
     try:
         import argcomplete
+
         argcomplete.autocomplete(parser)
     except ImportError:
         pass
