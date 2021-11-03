@@ -14,25 +14,29 @@ from zipfile import ZipFile, ZipInfo
 class SdkManagerTest(unittest.TestCase):
     """test the core sdkmanager functions"""
 
+    @classmethod
+    def setUpClass(cls):
+        cls.initial_tests_dir = Path(__file__).resolve().parent / 'tests'
+
     def setUp(self):
-        self.tests_dir = os.path.join(os.path.dirname(__file__), 'tests')
+        self.tests_dir = self.initial_tests_dir
         self.sdk_dir = Path(tempfile.mkdtemp(prefix='.test_sdkmanager-android-sdk-'))
         self.assertTrue(self.sdk_dir.exists())
         sdkmanager.ANDROID_SDK_ROOT = self.sdk_dir
 
     def test_parse_repositories_cfg(self):
         rc = sdkmanager.parse_repositories_cfg(
-            os.path.join(self.tests_dir, 'disabled-repositories.cfg')
+            self.tests_dir / 'disabled-repositories.cfg'
         )
         self.assertEqual([], rc)
 
         rc = sdkmanager.parse_repositories_cfg(
-            os.path.join(self.tests_dir, 'simple-repositories.cfg')
+            self.tests_dir / 'simple-repositories.cfg'
         )
         self.assertEqual(['https://staging.f-droid.org/emulator/sys-img.xml'], rc)
 
         rc = sdkmanager.parse_repositories_cfg(
-            os.path.join(self.tests_dir, 'two-extras-repositories.cfg')
+            self.tests_dir / 'two-extras-repositories.cfg'
         )
         self.assertEqual(
             [

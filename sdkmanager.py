@@ -246,7 +246,7 @@ def parse_tools(url, d):
 
 def parse_repositories_cfg(f):
     """parse the supplied repositories.cfg and return a list of URLs"""
-    with open(f) as fp:
+    with Path(f).open() as fp:
         data = get_properties_dict(fp.read())
 
     disabled = set()
