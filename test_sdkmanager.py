@@ -3,10 +3,12 @@
 import json
 import os
 import sdkmanager
+import stat
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from zipfile import ZipFile, ZipInfo
 
 
 class SdkManagerTest(unittest.TestCase):
@@ -73,6 +75,64 @@ class SdkManagerTest(unittest.TestCase):
         with mock.patch('sys.argv', ['', 'build-tools;17.0.0']):
             sdkmanager.main()
         self.assertTrue((self.sdk_dir / 'build-tools/17.0.0/aapt').exists())
+
+    def test_install_with_symlinks(self):
+        """Some NDK zipballs might have symlinks in them."""
+
+        zipdir = Path('android-ndk-r22b')
+        zipball = Path(str(zipdir) + '-linux-x86_64.zip')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.chdir(tmpdir)
+            unix_st_mode = (
+                stat.S_IFLNK
+                | stat.S_IRUSR
+                | stat.S_IWUSR
+                | stat.S_IXUSR
+                | stat.S_IRGRP
+                | stat.S_IWGRP
+                | stat.S_IXGRP
+                | stat.S_IROTH
+                | stat.S_IWOTH
+                | stat.S_IXOTH
+            )
+            with ZipFile(str(zipball), 'w') as zipfp:
+                testfile = str(zipdir / 'testfile')
+                zipfp.writestr(testfile, 'This is just a test!')
+
+                zipInfo = ZipInfo(str(zipdir / 'basename'))
+                zipInfo.create_system = 3
+                zipInfo.external_attr = unix_st_mode << 16
+                zipfp.writestr(zipInfo, os.path.basename(testfile))
+
+                zipInfo = ZipInfo(str(zipdir / 'executable'))
+                zipInfo.create_system = 3
+                zipInfo.external_attr = stat.S_IXUSR << 16
+                zipfp.writestr(zipInfo, '!#/bin/sh\necho This is an executable file\n')
+
+                zipInfo = ZipInfo(str(zipdir / 'bad_abs_link'))
+                zipInfo.create_system = 3
+                zipInfo.external_attr = unix_st_mode << 16
+                zipfp.writestr(zipInfo, '/etc/passwd')
+
+                zipInfo = ZipInfo(str(zipdir / 'bad_rel_link'))
+                zipInfo.create_system = 3
+                zipInfo.external_attr = unix_st_mode << 16
+                zipfp.writestr(zipInfo, '../../../../../../../etc/passwd')
+
+                # zipfp.writestr(str(zipdir / 'foo/mkdir'), 'shorthand to create the foo dir')
+                zipInfo = ZipInfo(str(zipdir / 'bad_rel_link2'))
+                zipInfo.create_system = 3
+                zipInfo.external_attr = unix_st_mode << 16
+                zipfp.writestr(zipInfo, 'foo/../../../../../../../../../etc/passwd')
+
+            install_dir = Path(tmpdir) / 'install_dir'
+            sdkmanager._install_zipball_from_cache(zipball, install_dir)
+
+            self.assertTrue(install_dir.exists())
+            self.assertTrue((install_dir / 'basename').exists())
+            self.assertFalse((install_dir / 'bad_abs_link').exists())
+            self.assertFalse((install_dir / 'bad_rel_link').exists())
+            self.assertFalse((install_dir / 'bad_rel_link2').exists())
 
 
 if __name__ == "__main__":

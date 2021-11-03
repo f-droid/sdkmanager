@@ -20,7 +20,6 @@
 
 import argparse
 import configparser
-import glob
 import io
 import os
 import json
@@ -370,7 +369,7 @@ def install(to_install):
 
 
 def _install_zipball_from_cache(zipball, install_dir):
-    unzip_dir = tempfile.mkdtemp(prefix='.sdkmanager-')
+    unzip_dir = Path(tempfile.mkdtemp(prefix='.sdkmanager-'))
 
     print('Unzipping to %s' % unzip_dir)
     toplevels = set()
@@ -378,11 +377,28 @@ def _install_zipball_from_cache(zipball, install_dir):
         with zipfile.ZipFile(str(zipball)) as zipfp:
             for info in zipfp.infolist():
                 permbits = info.external_attr >> 16
-                zipfp.extract(info.filename, path=unzip_dir)
-                writefile = os.path.join(unzip_dir, info.filename)
-                if stat.S_ISDIR(permbits) or stat.S_IXUSR & permbits:
+                writefile = str(unzip_dir / info.filename)
+                if stat.S_ISLNK(permbits):
+                    link = unzip_dir / info.filename
+                    link.parent.mkdir(0o755, parents=True, exist_ok=True)
+                    link_target = zipfp.read(info).decode()
+                    os.symlink(link_target, str(link))
+
+                    try:
+                        link.resolve().relative_to(unzip_dir)
+                    except (FileNotFoundError, ValueError):
+                        link.unlink()
+                        trim_at = len(str(unzip_dir)) + 1
+                        print(
+                            'ERROR: Unexpected symlink target: {link} -> {target}'.format(
+                                link=str(link)[trim_at:], target=link_target
+                            )
+                        )
+                elif stat.S_ISDIR(permbits) or stat.S_IXUSR & permbits:
+                    zipfp.extract(info.filename, path=str(unzip_dir))
                     os.chmod(writefile, 0o755)  # nosec bandit B103
                 else:
+                    zipfp.extract(info.filename, path=str(unzip_dir))
                     os.chmod(writefile, 0o644)  # nosec bandit B103
             toplevels.update([p.split('/')[0] for p in zipfp.namelist()])
     except zipfile.BadZipFile as e:
@@ -393,12 +409,12 @@ def _install_zipball_from_cache(zipball, install_dir):
 
     print('Installing into', install_dir)
     if len(toplevels) == 1:
-        for extracted in glob.glob(os.path.join(unzip_dir, '*')):
+        for extracted in unzip_dir.glob('*'):
             shutil.move(str(extracted), str(install_dir))
     else:
         install_dir.mkdir(parents=True)
-        for extracted in glob.glob(os.path.join(unzip_dir, '*')):
-            shutil.move(extracted, str(install_dir))
+        for extracted in unzip_dir.glob('*'):
+            shutil.move(str(extracted), str(install_dir))
     if zipball.exists():
         zipball.unlink()
 
