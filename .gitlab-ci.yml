@@ -6,11 +6,10 @@ variables:
 
 
 black:
-  image: debian:buster-slim
+  image: python:slim
   script:
-    - apt-get update
-    - apt-get -qy install black
-    - black --skip-string-normalization *.py
+    - pip install black
+    - black --check --diff --color *.py
 
 
 lint_format_safety_bandit_checks:
