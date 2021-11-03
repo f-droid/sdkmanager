@@ -51,7 +51,7 @@ class SdkManagerTest(unittest.TestCase):
         self.assertTrue(('tools',) in sdkmanager.packages)
         self.assertTrue(('platform-tools',) in sdkmanager.packages)
         self.assertEqual(
-            'https://dl.google.com/android/repository/platform-29_r04.zip',
+            'https://dl.google.com/android/repository/platform-29_r05.zip',
             sdkmanager.packages[('platforms', 'android-29')],
         )
 

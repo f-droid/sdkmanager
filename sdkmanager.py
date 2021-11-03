@@ -187,12 +187,22 @@ def parse_ndk(url, d):
 
 
 def parse_platforms(url, d):
+    """Parse platforms and choose the URL with the highest release number
+
+    These packages are installed by API version,
+    e.g. platforms;android-29, but there are multiple releases
+    available, e.g. platform-29_r05.zip, platform-29_r04.zip, etc.
+
+    """
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
         apilevel = source_properties['androidversion.apilevel']
         # TODO this should make all versions/revisions available, not only most recent
         key = ('platforms', 'android-%s' % apilevel)
-        packages[key] = url
+        if key in packages:
+            packages[key] = sorted([url, packages.get(key)])[-1]
+        else:
+            packages[key] = url
 
 
 def parse_platform_tools(url, d):
