@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import io
 import json
 import os
 import sdkmanager
@@ -64,7 +65,7 @@ class SdkManagerTest(unittest.TestCase):
         )
 
     def test_main_args(self):
-        for command in ['list', 'install']:
+        for command in ['install', 'licenses', 'list']:
             with mock.patch('sys.argv', ['', '--' + command]):
                 with mock.patch('sdkmanager.' + command) as function:
                     sdkmanager.main()
@@ -78,6 +79,20 @@ class SdkManagerTest(unittest.TestCase):
             with mock.patch('sys.argv', ['', 'ndk;r21e', 'build-tools;29.0.3']):
                 sdkmanager.main()
                 self.assertEqual(2, function.call_count)
+
+    def test_licenses(self):
+        licenses_dir = self.sdk_dir / 'licenses'
+        self.assertFalse(licenses_dir.exists())
+        with mock.patch('sys.argv', ['', '--licenses']):
+            with mock.patch('sys.stdin', io.StringIO('n\n')) as stdin:
+                sdkmanager.main()
+                self.assertEqual('', stdin.read(), "all input consumed")
+                self.assertFalse(licenses_dir.exists())
+            with mock.patch('sys.stdin', io.StringIO('y\n')) as stdin:
+                sdkmanager.main()
+                self.assertEqual('', stdin.read(), "all input consumed")
+                self.assertTrue(licenses_dir.exists())
+                self.assertEqual(4, len(list(licenses_dir.glob('*'))))
 
     def test_install(self):
         with mock.patch('sys.argv', ['', 'build-tools;17.0.0']):

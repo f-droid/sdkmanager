@@ -360,6 +360,61 @@ def _process_checksums(checksums):
                 parse_tools(url, entry)
 
 
+def licenses():
+    """prompt the user to accept the various licenses
+
+    TODO actually implement it, this largely fakes it.
+
+    https://cs.android.com/android-studio/platform/tools/base/+/mirror-goog-studio-main:sdklib/src/main/java/com/android/sdklib/tool/sdkmanager/LicensesAction.java
+    https://cs.android.com/android-studio/platform/tools/base/+/mirror-goog-studio-main:repository/src/main/java/com/android/repository/api/License.java
+
+    """
+    global ANDROID_SDK_ROOT
+    known_licenses = {
+        'android-sdk-license': '\n8933bad161af4178b1185d1a37fbf41ea5269c55\n\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee',
+        'android-sdk-preview-license': '\n84831b9409646a918e30573bab4c9c91346d8abd\n',
+        'android-sdk-preview-license-old': '79120722343a6f314e0719f863036c702b0e6b2a\n\n84831b9409646a918e30573bab4c9c91346d8abd',
+        'intel-android-extra-license': '\nd975f751698a77b662f1254ddbeed3901e976f5a\n',
+    }
+    known_license_hashes = set()
+    for license_value in known_licenses.values():
+        for license in license_value.strip().split('\n'):
+            if license:
+                known_license_hashes.add(license)
+
+    found_license_hashes = set()
+    licenses_dir = Path(ANDROID_SDK_ROOT) / 'licenses'
+    for f in licenses_dir.glob('*'):
+        with f.open() as fp:
+            for license in fp.read().strip().split('\n'):
+                if license:
+                    found_license_hashes.add(license)
+
+    total = len(known_license_hashes)
+    license_count = total - len(found_license_hashes)
+    if license_count == 0:
+        print('All SDK package licenses accepted.')
+        return
+    elif license_count == 1:
+        fl = ('1', '1', '', 's')
+    else:
+        fl = (license_count, total, 's', 've')
+    msg = (
+        "{0} of {1} SDK package license{2} not accepted.\n"
+        "Review license{2} that ha{3} not been accepted (y/N)? "
+    ).format(*fl)
+    s = input(msg)
+    print()
+    if s.lower() in ('y', 'yes'):
+        licenses_dir.mkdir(exist_ok=True)
+        for h in known_license_hashes:
+            if h not in found_license_hashes:
+                for license_file, known in known_licenses.items():
+                    if h in known:
+                        with (licenses_dir / license_file).open('w') as fp:
+                            fp.write(known)
+
+
 def install(to_install):
     """Install specified packages, including downloading them as needed
 
