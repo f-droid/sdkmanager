@@ -50,6 +50,7 @@ ANDROID_SDK_ROOT = os.getenv(
 
 BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
 NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?')
+M2REPOSITORY_REVISION_REGEX = re.compile(r'android_m2repository_r([0-9]+)\.zip')
 
 # The sub-directory to install a given package into, assumes ANDROID_SDK_ROOT as root
 INSTALL_DIRS = {
@@ -61,6 +62,7 @@ INSTALL_DIRS = {
     'platforms': 'platforms/{revision}',
     'platform-tools': 'platform-tools',
     'tools': 'tools',
+    'extras;android;m2repository': 'extras/android/m2repository',
 }
 
 USAGE = """
@@ -169,6 +171,22 @@ def parse_emulator(url, d):
         versioned = (key[0], source_properties['pkg.revision'])
         if versioned not in packages:
             packages[versioned] = url
+
+
+def parse_m2repository(url, d):
+    if 'source.properties' in d:
+        # source.properties does not reliably contain Pkg.Revision or the path info
+        m = M2REPOSITORY_REVISION_REGEX.search(url)
+        if m:
+            revision = m.group(1)
+            key = ('extras', 'android', 'm2repository')
+            packages[key] = url
+            versioned = key + tuple([revision])
+            if versioned not in packages:
+                packages[versioned] = url
+            noleading0 = key + tuple([revision.lstrip('0')])
+            if noleading0 not in packages:
+                packages[noleading0] = url
 
 
 def parse_ndk(url, d):
@@ -326,6 +344,9 @@ def _process_checksums(checksums):
         elif basename.startswith('emulator'):
             for entry in checksums[url]:
                 parse_emulator(url, entry)
+        elif basename.startswith('android_m2repository_r'):
+            for entry in checksums[url]:
+                parse_m2repository(url, entry)
         elif 'ndk-' in url:
             parse_ndk(url, checksums[url][0])
         elif basename.startswith('platform-tools'):
@@ -366,7 +387,12 @@ def install(to_install):
         zipball = CACHEDIR / os.path.basename(url)
         if not zipball.exists():
             download_file(url, zipball)
-        name = key[0]
+
+        if key[0] == 'extras' and len(key) in (3, 4):
+            name = ';'.join(key[:3])
+        else:
+            name = key[0]
+
         package_sub_dir = INSTALL_DIRS[name]
         if len(key) > 1:
             install_dir = ANDROID_SDK_ROOT / package_sub_dir.format(revision=key[-1])
@@ -374,7 +400,7 @@ def install(to_install):
             install_dir = ANDROID_SDK_ROOT / package_sub_dir
         if '/' not in package_sub_dir and (install_dir / 'source.properties').exists():
             shutil.rmtree(install_dir)
-        install_dir.parent.mkdir(exist_ok=True)
+        install_dir.parent.mkdir(parents=True, exist_ok=True)
         _install_zipball_from_cache(zipball, install_dir)
 
 

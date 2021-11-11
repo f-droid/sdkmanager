@@ -58,6 +58,10 @@ class SdkManagerTest(unittest.TestCase):
             'https://dl.google.com/android/repository/platform-29_r05.zip',
             sdkmanager.packages[('platforms', 'android-29')],
         )
+        self.assertEqual(
+            'https://dl.google.com/android/repository/android_m2repository_r47.zip',
+            sdkmanager.packages[('extras', 'android', 'm2repository', '47')],
+        )
 
     def test_main_args(self):
         for command in ['list', 'install']:
