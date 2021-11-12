@@ -50,6 +50,7 @@ setup(
     python_requires='>=3.5',
     cmdclass={'versioncheck': VersionCheckCommand},
     install_requires=['argcomplete', 'requests > 2.12.2, != 2.18.0'],
+    extras_require={'test': ['defusedxml']},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

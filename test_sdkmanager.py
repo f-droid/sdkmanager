@@ -7,6 +7,7 @@ import sdkmanager
 import stat
 import tempfile
 import unittest
+from defusedxml import ElementTree
 from pathlib import Path
 from unittest import mock
 from zipfile import ZipFile, ZipInfo
@@ -24,6 +25,34 @@ class SdkManagerTest(unittest.TestCase):
         self.sdk_dir = Path(tempfile.mkdtemp(prefix='.test_sdkmanager-android-sdk-'))
         self.assertTrue(self.sdk_dir.exists())
         sdkmanager.ANDROID_SDK_ROOT = self.sdk_dir
+
+    def test_package_xml_template(self):
+        self.assertEqual(
+            "<", sdkmanager.PACKAGE_XML_TEMPLATE[0], "no whitespace at start of XML"
+        )
+        self.assertEqual(
+            ">", sdkmanager.PACKAGE_XML_TEMPLATE[-1], "no whitespace at end of XML"
+        )
+        baseurl = 'https://dl.google.com/android/repository/'
+        for package, f, result in (
+            ('build-tools;28.0.1', 'build-tools_r28.0.1-linux.zip', (28, 0, 1)),
+            ('cmake;3.10.2.4988404', 'cmake-3.10.2-linux-x86_64.zip', (3, 10, 2)),
+            ('ndk;22.1.7171670', 'android-ndk-r22b-linux-x86_64.zip', (22, 1, 7171670)),
+        ):
+            install_dir = self.sdk_dir / 'install_dir' / package.split(';')[0]
+            install_dir.mkdir(parents=True)
+            sdkmanager._generate_package_xml(install_dir, package, baseurl + f)
+            package_xml = install_dir / 'package.xml'
+            self.assertTrue(
+                package_xml.exists(), '_generate_package_xml() creates package.xml'
+            )
+            root = ElementTree.parse(str(package_xml)).getroot()
+            revision = root.find('./localPackage/revision')
+            self.assertIsNotNone(revision, 'package.xml must contain <revision>')
+            major = revision.find('major')
+            self.assertIsNotNone(major, '<revision> must contain <major>')
+            self.assertEqual(package.split(';')[1].split('.')[0], major.text)
+            self.assertEqual(result[0], int(major.text))
 
     def test_parse_repositories_cfg(self):
         rc = sdkmanager.parse_repositories_cfg(
@@ -55,14 +84,16 @@ class SdkManagerTest(unittest.TestCase):
             sdkmanager._process_checksums(json.load(fp))
         self.assertTrue(('tools',) in sdkmanager.packages)
         self.assertTrue(('platform-tools',) in sdkmanager.packages)
+
+        url = 'https://dl.google.com/android/repository/platform-29_r05.zip'
+        self.assertEqual(url, sdkmanager.packages[('platforms', 'android-29')])
+        self.assertEqual((5,), sdkmanager.revisions[url])
+
+        url = 'https://dl.google.com/android/repository/android_m2repository_r47.zip'
         self.assertEqual(
-            'https://dl.google.com/android/repository/platform-29_r05.zip',
-            sdkmanager.packages[('platforms', 'android-29')],
+            url, sdkmanager.packages[('extras', 'android', 'm2repository', '47')]
         )
-        self.assertEqual(
-            'https://dl.google.com/android/repository/android_m2repository_r47.zip',
-            sdkmanager.packages[('extras', 'android', 'm2repository', '47')],
-        )
+        self.assertEqual((47, 0, 0), sdkmanager.revisions[url])
 
     def test_main_args(self):
         for command in ['install', 'licenses', 'list']:

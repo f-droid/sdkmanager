@@ -28,6 +28,7 @@ import requests
 import shutil
 import stat
 import tempfile
+import textwrap
 import zipfile
 from distutils.version import LooseVersion
 from pathlib import Path
@@ -64,6 +65,25 @@ INSTALL_DIRS = {
     'tools': 'tools',
     'extras;android;m2repository': 'extras/android/m2repository',
 }
+
+PACKAGE_XML_TEMPLATE = textwrap.dedent(
+    """
+    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <ns2:repository
+        xmlns:ns2="http://schemas.android.com/repository/android/common/01"
+        xmlns:ns3="http://schemas.android.com/repository/android/generic/01"
+        xmlns:ns4="http://schemas.android.com/sdk/android/repo/addon2/01"
+        xmlns:ns5="http://schemas.android.com/sdk/android/repo/repository2/01"
+        xmlns:ns6="http://schemas.android.com/sdk/android/repo/sys-img2/01">
+      <localPackage path="{path}">
+        <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns3:genericDetailsType"/>
+        <revision>{revision}</revision>
+        <display-name>PLACEHOLDER</display-name>
+        <uses-license ref="android-sdk-license"/>
+      </localPackage>
+    </ns2:repository>
+"""
+).strip()
 
 USAGE = """
 Usage:
@@ -121,6 +141,7 @@ Common Arguments:
 """
 
 packages = dict()
+revisions = dict()
 
 
 def download_file(url, local_filename=None, dldir=CACHEDIR):
@@ -145,9 +166,16 @@ def get_properties_dict(string):
     return dict(config.items('DEFAULT'))
 
 
+def _add_to_revisions(url, source_properties):
+    pkg_revision = source_properties.get('pkg.revision')
+    if pkg_revision:
+        revisions[url] = tuple(LooseVersion(pkg_revision).version)
+
+
 def parse_build_tools(url, d):
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         revision = source_properties['pkg.revision'].replace(' ', '-')
         key = ('build-tools', revision)
         if key not in packages:
@@ -157,6 +185,7 @@ def parse_build_tools(url, d):
 def parse_cmake(url, d):
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         key = tuple(source_properties['pkg.path'].split(';'))
         if key not in packages:
             packages[key] = url
@@ -165,6 +194,7 @@ def parse_cmake(url, d):
 def parse_emulator(url, d):
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         key = tuple(source_properties['pkg.path'].split(';'))
         if key not in packages:
             packages[key] = url
@@ -175,6 +205,8 @@ def parse_emulator(url, d):
 
 def parse_m2repository(url, d):
     if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         # source.properties does not reliably contain Pkg.Revision or the path info
         m = M2REPOSITORY_REVISION_REGEX.search(url)
         if m:
@@ -192,6 +224,7 @@ def parse_m2repository(url, d):
 def parse_ndk(url, d):
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         revision = source_properties['pkg.revision']
         for k in ('ndk', 'ndk-bundle'):
             key = (k, revision)
@@ -214,6 +247,7 @@ def parse_platforms(url, d):
     """
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         apilevel = source_properties['androidversion.apilevel']
         # TODO this should make all versions/revisions available, not only most recent
         key = ('platforms', 'android-%s' % apilevel)
@@ -227,6 +261,7 @@ def parse_platform_tools(url, d):
     """Find all platform-tools packages and set highest version as 'platform-tools'"""
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         key = ('platform-tools', source_properties.get('pkg.revision'))
         if key not in packages:
             packages[key] = url
@@ -245,6 +280,7 @@ def parse_tools(url, d):
     """Find all tools packages and set highest version as 'tools'"""
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
         path = source_properties.get('pkg.path')
         if not path:
             path = 'tools'
@@ -457,6 +493,7 @@ def install(to_install):
             shutil.rmtree(install_dir)
         install_dir.parent.mkdir(parents=True, exist_ok=True)
         _install_zipball_from_cache(zipball, install_dir)
+        _generate_package_xml(install_dir, package, url)
 
 
 def _install_zipball_from_cache(zipball, install_dir):
@@ -508,6 +545,16 @@ def _install_zipball_from_cache(zipball, install_dir):
             shutil.move(str(extracted), str(install_dir))
     if zipball.exists():
         zipball.unlink()
+
+
+def _generate_package_xml(install_dir, package, url):
+    """Generate package.xml for an installed package"""
+    revision = revisions[url]
+    template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
+    r = min(3, len(revision))
+    d = {'revision': ''.join(template[:r]).format(*revision), 'path': package}
+    with (install_dir / 'package.xml').open('w') as fp:
+        fp.write(PACKAGE_XML_TEMPLATE.format(**d))
 
 
 def list():

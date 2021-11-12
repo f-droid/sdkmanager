@@ -20,6 +20,21 @@ variables:
   - apt-get dist-upgrade
 
 
+.test-template: &test-template
+  - ./test_sdkmanager.py
+
+  - export ANDROID_SDK_ROOT=/tmp/android-sdk
+  - ./sdkmanager.py --list
+  - ./sdkmanager.py 'build-tools;29.0.3' 'cmake;3.18.1'
+
+  - echo "deb http://deb.debian.org/debian stretch main" >> /etc/apt/sources.list
+  - apt-get update
+  - apt-get install openjdk-8-jdk-headless
+  - ./sdkmanager.py tools
+  # ensure that Android's sdkmanager understands fdroid's installs
+  - $ANDROID_SDK_ROOT/tools/bin/sdkmanager 'build-tools;29.0.3' 'cmake;3.18.1'
+
+
 black:
   image: python:slim
   script:
@@ -58,13 +73,10 @@ test pip:
           python3-pip
           python3-setuptools
           python3-wheel
-    - pip install -e .
+    - pip install -e .[test]
     - ./setup.py sdist
-    - ./test_sdkmanager.py
 
-    - export ANDROID_SDK_ROOT=/tmp/android-sdk
-    - ./sdkmanager.py --list
-    - ./sdkmanager.py 'build-tools;29.0.3' 'cmake;3.18.1'
+    - *test-template
 
 
 
@@ -75,10 +87,8 @@ test stretch:
     - apt-get install
           git
           python3-argcomplete
+          python3-defusedxml
           python3-requests
           python3-setuptools
-    - ./test_sdkmanager.py
 
-    - export ANDROID_HOME=/tmp/android-sdk
-    - ./sdkmanager.py --list
-    - ./sdkmanager.py 'build-tools;29.0.3' 'cmake;3.18.1'
+    - *test-template
