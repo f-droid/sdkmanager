@@ -5,6 +5,21 @@ variables:
   GIT_DEPTH: 1
 
 
+.apt-template: &apt-template
+  - export LC_ALL=C.UTF-8
+  - export DEBIAN_FRONTEND=noninteractive
+  - echo Etc/UTC > /etc/timezone
+  - echo 'quiet "1";'
+       'APT::Install-Recommends "0";'
+       'APT::Install-Suggests "0";'
+       'APT::Acquire::Retries "20";'
+       'APT::Get::Assume-Yes "true";'
+       'Dpkg::Use-Pty "0";'
+      > /etc/apt/apt.conf.d/99gitlab
+  - apt-get update
+  - apt-get dist-upgrade
+
+
 black:
   image: python:slim
   script:
@@ -37,9 +52,8 @@ lint_format_safety_bandit_checks:
 test pip:
   image: debian:bullseye
   script:
-    - apt-get update
-    - apt-get -qy dist-upgrade
-    - apt-get -qy install --no-install-recommends
+    - *apt-template
+    - apt-get install
           git
           python3-pip
           python3-setuptools
@@ -53,12 +67,12 @@ test pip:
     - ./sdkmanager.py 'build-tools;29.0.3' 'cmake;3.18.1'
 
 
+
 test stretch:
   image: debian:stretch-backports
   script:
-    - apt-get update
-    - apt-get -qy dist-upgrade
-    - apt-get -qy install --no-install-recommends
+    - *apt-template
+    - apt-get install
           git
           python3-argcomplete
           python3-requests
