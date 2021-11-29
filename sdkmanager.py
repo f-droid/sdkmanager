@@ -58,7 +58,7 @@ INSTALL_DIRS = {
     'build-tools': 'build-tools/{revision}',
     'cmake': 'cmake/{revision}',
     'emulator': 'emulator',
-    'ndk': 'ndks/{revision}',
+    'ndk': 'ndk/{revision}',
     'ndk-bundle': 'ndk-bundle',
     'platforms': 'platforms/{revision}',
     'platform-tools': 'platform-tools',
