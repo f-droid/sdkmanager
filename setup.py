@@ -38,7 +38,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='sdkmanager',
-    version='0.3',
+    version='0.4',
     description='Android SDK Manager',
     long_description=long_description,
     long_description_content_type='text/markdown',
