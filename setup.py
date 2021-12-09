@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from setuptools import Command
-from setuptools import setup
+from setuptools import Command, setup
 import subprocess
 import sys
 
@@ -46,7 +45,10 @@ setup(
     author_email='team@f-droid.org',
     url='https://gitlab.com/fdroid/sdkmanager',
     license='AGPL-3.0',
-    scripts=['sdkmanager.py'],
+    py_modules=['sdkmanager'],
+    entry_points={
+        'console_scripts': ['sdkmanager=sdkmanager:main']
+    },
     python_requires='>=3.5',
     cmdclass={'versioncheck': VersionCheckCommand},
     install_requires=['argcomplete', 'requests > 2.12.2, != 2.18.0'],
