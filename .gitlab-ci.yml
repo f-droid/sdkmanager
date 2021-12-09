@@ -65,8 +65,7 @@ lint_format_safety_bandit_checks:
         -r $CI_PROJECT_DIR
         || set_error
     - safety check --full-report || set_error
-    - pylint --rcfile=.pylint-rcfile --output-format=colorized --reports=n *.py */*.py
-        || set_error
+    - pylint --rcfile=.pylint-rcfile --output-format=colorized --reports=n *.py || set_error
     - exit $EXITVALUE
 
 

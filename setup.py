@@ -46,9 +46,7 @@ setup(
     url='https://gitlab.com/fdroid/sdkmanager',
     license='AGPL-3.0',
     py_modules=['sdkmanager'],
-    entry_points={
-        'console_scripts': ['sdkmanager=sdkmanager:main']
-    },
+    entry_points={'console_scripts': ['sdkmanager=sdkmanager:main']},
     python_requires='>=3.5',
     cmdclass={'versioncheck': VersionCheckCommand},
     install_requires=['argcomplete', 'requests > 2.12.2, != 2.18.0'],
