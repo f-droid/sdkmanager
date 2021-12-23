@@ -1,0 +1,242 @@
+
+function _sdkmanager()
+{
+  local cur prev opts packages
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  opts="--channel
+        --help
+        --include_obsolete
+        --install
+        --licenses
+        --list
+        --no_https
+        --proxy
+        --proxy_host
+        --proxy_port
+        --sdk_root
+        --uninstall
+        --update
+        --verbose
+        --version"
+
+  packages='
+      build-tools;19.1.0
+      build-tools;20.0.0
+      build-tools;21.1.2
+      build-tools;22.0.1
+      build-tools;23.0.1
+      build-tools;23.0.2
+      build-tools;23.0.3
+      build-tools;24.0.0
+      build-tools;24.0.1
+      build-tools;24.0.2
+      build-tools;24.0.3
+      build-tools;25.0.0
+      build-tools;25.0.1
+      build-tools;25.0.2
+      build-tools;25.0.3
+      build-tools;26.0.0
+      build-tools;26.0.1
+      build-tools;26.0.2
+      build-tools;26.0.3
+      build-tools;27.0.0
+      build-tools;27.0.1
+      build-tools;27.0.2
+      build-tools;27.0.3
+      build-tools;28.0.0
+      build-tools;28.0.1
+      build-tools;28.0.2
+      build-tools;28.0.3
+      build-tools;29.0.0
+      build-tools;29.0.1
+      build-tools;29.0.2
+      build-tools;29.0.3
+      build-tools;30.0.0
+      build-tools;30.0.1
+      build-tools;30.0.2
+      build-tools;30.0.3
+      build-tools;31.0.0
+      build-tools;32.0.0
+      cmake;3.10.2.4988404
+      cmake;3.18.1
+      cmake;3.6.4111459
+      cmdline-tools;1.0
+      cmdline-tools;2.1
+      cmdline-tools;3.0
+      cmdline-tools;4.0
+      cmdline-tools;5.0
+      cmdline-tools;latest
+      emulator
+      extras;android;m2repository
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-alpha4
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-alpha8
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-beta1
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-beta2
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-beta3
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-beta4
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.0-beta5
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.1
+      extras;m2repository;com;android;support;constraint;constraint-layout-solver;1.0.2
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-alpha4
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-alpha8
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-beta1
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-beta2
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-beta3
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-beta4
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.0-beta5
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.1
+      extras;m2repository;com;android;support;constraint;constraint-layout;1.0.2
+      ndk-bundle
+      ndk;16.1.4479499
+      ndk;17.2.4988734
+      ndk;18.1.5063045
+      ndk;19.2.5345600
+      ndk;20.0.5594570
+      ndk;20.1.5948944
+      ndk;21.0.6113669
+      ndk;21.1.6352462
+      ndk;21.2.6472646
+      ndk;21.3.6528147
+      ndk;21.4.7075529
+      ndk;22.0.7026061
+      ndk;22.1.7171670
+      ndk;23.0.7599858
+      ndk;23.1.7779620
+      patcher;v4
+      platform-tools
+      platforms;android-10
+      platforms;android-11
+      platforms;android-12
+      platforms;android-13
+      platforms;android-14
+      platforms;android-15
+      platforms;android-16
+      platforms;android-17
+      platforms;android-18
+      platforms;android-19
+      platforms;android-20
+      platforms;android-21
+      platforms;android-22
+      platforms;android-23
+      platforms;android-24
+      platforms;android-25
+      platforms;android-26
+      platforms;android-27
+      platforms;android-28
+      platforms;android-29
+      platforms;android-30
+      platforms;android-31
+      platforms;android-32
+      platforms;android-7
+      platforms;android-8
+      platforms;android-9
+      skiaparser;1
+      skiaparser;2
+      sources;android-15
+      sources;android-16
+      sources;android-17
+      sources;android-18
+      sources;android-19
+      sources;android-20
+      sources;android-21
+      sources;android-22
+      sources;android-23
+      sources;android-24
+      sources;android-25
+      sources;android-26
+      sources;android-27
+      sources;android-28
+      sources;android-29
+      sources;android-30
+      sources;android-31
+      system-images;android-10;default;armeabi-v7a
+      system-images;android-10;default;x86
+      system-images;android-14;default;armeabi-v7a
+      system-images;android-15;default;armeabi-v7a
+      system-images;android-15;default;x86
+      system-images;android-16;default;armeabi-v7a
+      system-images;android-16;default;mips
+      system-images;android-16;default;x86
+      system-images;android-17;default;armeabi-v7a
+      system-images;android-17;default;mips
+      system-images;android-17;default;x86
+      system-images;android-18;default;armeabi-v7a
+      system-images;android-18;default;x86
+      system-images;android-19;default;armeabi-v7a
+      system-images;android-19;default;x86
+      system-images;android-21;default;armeabi-v7a
+      system-images;android-21;default;x86
+      system-images;android-21;default;x86_64
+      system-images;android-22;default;armeabi-v7a
+      system-images;android-22;default;x86
+      system-images;android-22;default;x86_64
+      system-images;android-23;default;armeabi-v7a
+      system-images;android-23;default;x86
+      system-images;android-23;default;x86_64
+      system-images;android-24;default;arm64-v8a
+      system-images;android-24;default;armeabi-v7a
+      system-images;android-24;default;x86
+      system-images;android-24;default;x86_64
+      system-images;android-25;default;x86
+      system-images;android-25;default;x86_64
+      system-images;android-26;default;x86
+      system-images;android-26;default;x86_64
+      system-images;android-27;default;x86
+      system-images;android-27;default;x86_64
+      system-images;android-28;default;arm64-v8a
+      system-images;android-28;default;x86
+      system-images;android-28;default;x86_64
+      system-images;android-29;default;arm64-v8a
+      system-images;android-29;default;x86
+      system-images;android-29;default;x86_64
+      system-images;android-30;default;arm64-v8a
+      system-images;android-30;default;x86_64
+      system-images;android-31;default;arm64-v8a
+      system-images;android-31;default;x86_64
+  '
+
+  case "$prev" in
+      --channel)
+          COMPREPLY=( $(compgen -W "0 1 2 3" -- $cur) )
+          return 0;
+          ;;
+      --proxy)
+          COMPREPLY=( $(compgen -W "http socks" -- $cur) )
+          return 0;
+          ;;
+      --proxy_host|--proxy_port)
+          return 0;
+          ;;
+      --sdk_root)
+          COMPREPLY=( $(compgen -d -- $cur) )
+          return 0;
+          ;;
+  esac
+
+  case "$cur" in
+      -*)
+          COMPREPLY=( $(compgen -W "$opts" -- $cur) )
+          return 0
+          ;;
+      [a-z]*)
+          COMPREPLY=( $(compgen -W "$packages" -- $cur) )
+          return 0
+          ;;
+  esac
+
+  COMPREPLY=( $(compgen -W "$opts $packages" -- $cur) )
+  return 0
+}
+complete -F _sdkmanager sdkmanager
+
+# Local variables:
+# mode: shell-script
+# sh-basic-offset: 4
+# sh-indent-comment: t
+# indent-tabs-mode: nil
+# End:
+# ex: ts=4 sw=4 et filetype=sh
