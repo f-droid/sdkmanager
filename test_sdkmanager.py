@@ -4,6 +4,7 @@ import io
 import json
 import os
 import sdkmanager
+import shutil
 import stat
 import tempfile
 import unittest
@@ -129,6 +130,22 @@ class SdkManagerTest(unittest.TestCase):
         with mock.patch('sys.argv', ['', 'build-tools;17.0.0']):
             sdkmanager.main()
         self.assertTrue((self.sdk_dir / 'build-tools/17.0.0/aapt').exists())
+
+    def test_verify(self):
+        checksums = self.tests_dir / 'checksums.json'
+        sdkmanager.verify(checksums)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.chdir(tmpdir)
+            shutil.copy(str(checksums.resolve()) + '.asc', 'checksums.json.asc')
+            with open('checksums.json', 'w') as fp:
+                fp.write('this is a placeholder that should not work')
+            with self.assertRaises(RuntimeError):
+                sdkmanager.verify('checksums.json')
+
+            open('zerofile', 'w').close()
+            open('zerofile.asc', 'w').close()
+            with self.assertRaises(RuntimeError):
+                sdkmanager.verify('zerofile')
 
     def test_install_with_symlinks(self):
         """Some NDK zipballs might have symlinks in them."""
