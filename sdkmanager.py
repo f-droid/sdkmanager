@@ -545,13 +545,20 @@ def verify(filename):
 
 
 def download_file(url, local_filename=None):
+    """download a file with some extra tricks for reliability
+
+    The stream=True parameter keeps memory usage low.  GitLab Pages
+    will return 304 if a request is made too frequently.
+
+    """
     filename = os.path.basename(urlparse(url).path)
     if local_filename is None:
         local_filename = CACHEDIR / filename
     print('Downloading', url, 'into', local_filename)
-    # the stream=True parameter keeps memory usage low
     r = requests.get(url, stream=True, allow_redirects=True, headers=HTTP_HEADERS)
     r.raise_for_status()
+    if r.status_code == 304:
+        raise RuntimeError('304 Not Modified: ' + url)
     with local_filename.open('wb') as f:
         for chunk in r.iter_content(chunk_size=io.DEFAULT_BUFFER_SIZE):
             if chunk:  # filter out keep-alive new chunks
