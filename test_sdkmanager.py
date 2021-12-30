@@ -23,9 +23,21 @@ class SdkManagerTest(unittest.TestCase):
 
     def setUp(self):
         self.tests_dir = self.initial_tests_dir
-        self.sdk_dir = Path(tempfile.mkdtemp(prefix='.test_sdkmanager-android-sdk-'))
+        self.temp_sdk_dir = tempfile.TemporaryDirectory()
+        self.sdk_dir = Path(self.temp_sdk_dir.name)
         self.assertTrue(self.sdk_dir.exists())
         sdkmanager.ANDROID_SDK_ROOT = self.sdk_dir
+        os.environ.pop('ANDROID_SDK_ROOT', None)
+        os.environ.pop('ANDROID_HOME', None)
+
+        self.temp_home = tempfile.TemporaryDirectory()
+        sdkmanager.CACHEDIR = Path(self.temp_home.name) / '.cache/sdkmanager'
+        sdkmanager.CACHEDIR.mkdir(parents=True)
+        os.environ['HOME'] = self.temp_home.name
+
+    def tearDown(self):
+        self.temp_home.cleanup()
+        self.temp_sdk_dir.cleanup()
 
     def test_package_xml_template(self):
         self.assertEqual(
@@ -77,11 +89,8 @@ class SdkManagerTest(unittest.TestCase):
             rc,
         )
 
-    @unittest.skipUnless(
-        sdkmanager.CACHED_CHECKSUMS.exists(), 'No cached checksums.json to work with.'
-    )
     def test_process_checksums(self):
-        with sdkmanager.CACHED_CHECKSUMS.open() as fp:
+        with (self.tests_dir / 'checksums.json').open() as fp:
             sdkmanager._process_checksums(json.load(fp))
         self.assertTrue(('tools',) in sdkmanager.packages)
         self.assertTrue(('platform-tools',) in sdkmanager.packages)

@@ -45,8 +45,6 @@ CHECKSUMS_URL = 'https://gitlab.com/fdroid/android-sdk-transparency-log/-/raw/ma
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
 
 CACHEDIR = Path.home() / '.cache/sdkmanager'
-CACHED_CHECKSUMS = CACHEDIR / os.path.basename(CHECKSUMS_URL)
-CACHED_CHECKSUMS_SIGNATURE = CACHEDIR / (CACHED_CHECKSUMS.name + '.asc')
 ANDROID_SDK_ROOT = os.getenv(
     'ANDROID_SDK_ROOT', os.getenv('ANDROID_HOME', '/opt/android-sdk')
 )
@@ -726,17 +724,18 @@ def parse_repositories_cfg(f):
 
 
 # TODO allow : and - as separator, e.g. ndk-22.1.7171670
-# verify GPG signature
 # only use android-sdk-transparency-log as source
 def build_package_list(use_net=False):
-    if CACHED_CHECKSUMS.exists() and CACHED_CHECKSUMS_SIGNATURE.exists():
-        verify(CACHED_CHECKSUMS)
-        with CACHED_CHECKSUMS.open() as fp:
+    cached_checksums = CACHEDIR / 'checksums.json'
+    cached_checksums_signature = CACHEDIR / (cached_checksums.name + '.asc')
+    if cached_checksums.exists() and cached_checksums_signature.exists():
+        verify(cached_checksums)
+        with cached_checksums.open() as fp:
             _process_checksums(json.load(fp))
     else:
         use_net = True  # need to fetch checksums.json, no cached version
 
-    etag_file = CACHED_CHECKSUMS.parent / (CACHED_CHECKSUMS.name + '.etag')
+    etag_file = cached_checksums.parent / (cached_checksums.name + '.etag')
     if etag_file.exists():
         etag = etag_file.read_text()
         HTTP_HEADERS['If-None-Match'] = etag
@@ -748,8 +747,9 @@ def build_package_list(use_net=False):
             CHECKSUMS_URL + '.asc', allow_redirects=True, headers=HTTP_HEADERS
         )
         r.raise_for_status()
-        with CACHED_CHECKSUMS_SIGNATURE.open('wb') as fp:
+        with cached_checksums_signature.open('wb') as fp:
             fp.write(r.content)
+
         try:
             r = requests.get(CHECKSUMS_URL, allow_redirects=True, headers=HTTP_HEADERS)
         except ValueError as e:
@@ -760,8 +760,8 @@ def build_package_list(use_net=False):
         r.raise_for_status()
 
         if etag is None or etag != r.headers.get('etag'):
-            CACHED_CHECKSUMS.write_bytes(r.content)
-            verify(CACHED_CHECKSUMS)
+            cached_checksums.write_bytes(r.content)
+            verify(cached_checksums)
             etag_file.write_text(r.headers['etag'])
             _process_checksums(r.json())
 
