@@ -94,6 +94,7 @@ test stretch:
           python3-argcomplete
           python3-defusedxml
           python3-requests
+          python3-requests-cache
           python3-setuptools
 
     - *test-template

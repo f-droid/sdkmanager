@@ -20,6 +20,14 @@ class SdkManagerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.initial_tests_dir = Path(__file__).resolve().parent / 'tests'
+        try:
+            import requests_cache
+
+            cache = os.path.join(tempfile.gettempdir(), 'SdkManagerTest_cache')
+            print('Using %s as Requests download cache' % cache)
+            requests_cache.install_cache(cache)
+        except ImportError:
+            pass
 
     def setUp(self):
         self.tests_dir = self.initial_tests_dir
