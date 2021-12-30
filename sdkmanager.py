@@ -23,8 +23,9 @@ import base64
 import configparser
 import gzip
 import io
-import os
 import json
+import os
+import random
 import re
 import requests
 import shutil
@@ -40,7 +41,13 @@ from urllib.parse import urlparse
 
 COMPATIBLE_VERSION = '26.1.1'
 
-CHECKSUMS_URL = 'https://gitlab.com/fdroid/android-sdk-transparency-log/-/raw/master/signed/checksums.json'
+# gitlab.com is disabled because it has Cloudflare blocking enabled and is therefore unreliable
+CHECKSUMS_URLS = (
+    'https://f-droid.github.io/android-sdk-transparency-log/signed/checksums.json',
+    'https://fdroid.gitlab.io/android-sdk-transparency-log/checksums.json',
+    # 'https://gitlab.com/fdroid/android-sdk-transparency-log/-/raw/master/signed/checksums.json',
+    'https://raw.githubusercontent.com/f-droid/android-sdk-transparency-log/master/signed/checksums.json',
+)
 
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
 
@@ -743,15 +750,16 @@ def build_package_list(use_net=False):
         etag = None
 
     if use_net:
+        checksums_url = CHECKSUMS_URLS[random.randint(0, len(CHECKSUMS_URLS) - 1)]
         r = requests.get(
-            CHECKSUMS_URL + '.asc', allow_redirects=True, headers=HTTP_HEADERS
+            checksums_url + '.asc', allow_redirects=True, headers=HTTP_HEADERS
         )
         r.raise_for_status()
         with cached_checksums_signature.open('wb') as fp:
             fp.write(r.content)
 
         try:
-            r = requests.get(CHECKSUMS_URL, allow_redirects=True, headers=HTTP_HEADERS)
+            r = requests.get(checksums_url, allow_redirects=True, headers=HTTP_HEADERS)
         except ValueError as e:
             if etag_file.exists():
                 etag_file.unlink()
