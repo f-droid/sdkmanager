@@ -539,6 +539,8 @@ def verify(filename):
     if p.returncode == 0:
         return
     print(p.stdout.decode())
+    os.remove(f)
+    os.remove(f + '.asc')
     raise RuntimeError(f + " failed to verify!")
 
 
