@@ -542,10 +542,10 @@ def verify(filename):
     raise RuntimeError(f + " failed to verify!")
 
 
-def download_file(url, local_filename=None, dldir=CACHEDIR):
+def download_file(url, local_filename=None):
     filename = os.path.basename(urlparse(url).path)
     if local_filename is None:
-        local_filename = dldir / filename
+        local_filename = CACHEDIR / filename
     print('Downloading', url, 'into', local_filename)
     # the stream=True parameter keeps memory usage low
     r = requests.get(url, stream=True, allow_redirects=True, headers=HTTP_HEADERS)
@@ -751,12 +751,7 @@ def build_package_list(use_net=False):
 
     if use_net:
         checksums_url = CHECKSUMS_URLS[random.randint(0, len(CHECKSUMS_URLS) - 1)]
-        r = requests.get(
-            checksums_url + '.asc', allow_redirects=True, headers=HTTP_HEADERS
-        )
-        r.raise_for_status()
-        with cached_checksums_signature.open('wb') as fp:
-            fp.write(r.content)
+        download_file(checksums_url + '.asc')
 
         try:
             r = requests.get(checksums_url, allow_redirects=True, headers=HTTP_HEADERS)
