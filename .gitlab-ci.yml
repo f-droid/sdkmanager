@@ -98,3 +98,46 @@ test stretch:
           python3-setuptools
 
     - *test-template
+
+
+build_app_offline:
+  image: debian:stretch
+  only:
+    - branches
+  variables:
+    ANDROID_HOME: /opt/android-sdk
+  script:
+    - *apt-template
+    - apt-get install
+          default-jdk-headless
+          git
+          gradle
+          gradle-debian-helper
+          libgradle-android-plugin-java
+          python3-argcomplete
+          python3-pip
+          python3-requests
+          python3-setuptools
+          python3-wheel
+    - $pip install -e .
+    - sdkmanager "build-tools;24.0.0" "platforms;android-23" "platforms;android-25"
+    - mkdir -p $ANDROID_HOME/licenses/
+    - echo '24333f8a63b6825ea9c5514f83c2829b004d1fee' > $ANDROID_HOME/licenses/android-sdk-license
+    - mkdir ~/.android
+
+    - git clone --depth 1 --branch 0.2.13 https://gitlab.com/fdroid/privileged-extension.git
+    - cd privileged-extension
+    - sed -i
+          -e "s,jcenter(),maven { url 'file:///usr/share/maven-repo' },"
+          -e '/com\.android\.support/d'
+          build.gradle app/build.gradle
+    - |
+      tee --append gradle.properties <<EOF
+        # ensure that gradle can't reach the internet via HTTP
+        systemProp.http.proxyHost=localhost
+        systemProp.http.proxyPort=12345
+        systemProp.https.proxyHost=localhost
+        systemProp.https.proxyPort=12345
+      EOF
+
+    - gradle --offline assembleDebug
