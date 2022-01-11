@@ -773,6 +773,7 @@ def build_package_list(use_net=False):
         r.raise_for_status()
 
         if etag is None or etag != r.headers.get('etag'):
+            print('Downloading', checksums_url, 'into', str(cached_checksums))
             cached_checksums.write_bytes(r.content)
             verify(cached_checksums)
             etag_file.write_text(r.headers['etag'])
@@ -869,11 +870,8 @@ def install(to_install):
     """Install specified packages, including downloading them as needed
 
     Certain packages are installed into versioned sub-directories
-    while a couple of other are always installed into the same
-    location.  In those other cases, if that location exists, the
-    directory will be removed before installing the package.  These
-    installed packages will always contain at least
-    'source.properties'.
+    while others are always installed into the same location.  These
+    installed packages will at least always have 'source.properties'.
 
     Parameters
     ----------
@@ -889,22 +887,23 @@ def install(to_install):
     for package in to_install:
         key = tuple(package.split(';'))
         url = packages[key]
-        zipball = CACHEDIR / os.path.basename(url)
-        if not zipball.exists():
-            download_file(url, zipball)
 
         if key[0] == 'extras' and len(key) in (3, 4):
             name = ';'.join(key[:3])
         else:
             name = key[0]
 
-        package_sub_dir = INSTALL_DIRS[name]
         if len(key) > 1:
-            install_dir = ANDROID_SDK_ROOT / package_sub_dir.format(revision=key[-1])
+            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name].format(revision=key[-1])
         else:
-            install_dir = ANDROID_SDK_ROOT / package_sub_dir
-        if '/' not in package_sub_dir and (install_dir / 'source.properties').exists():
-            shutil.rmtree(str(install_dir))
+            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name]
+        if install_dir.exists():
+            continue
+
+        zipball = CACHEDIR / os.path.basename(url)
+        if not zipball.exists():
+            download_file(url, zipball)
+
         install_dir.parent.mkdir(parents=True, exist_ok=True)
         _install_zipball_from_cache(zipball, install_dir)
         _generate_package_xml(install_dir, package, url)
@@ -951,11 +950,11 @@ def _install_zipball_from_cache(zipball, install_dir):
 
     print('Installing into', install_dir)
     if len(toplevels) == 1:
-        for extracted in unzip_dir.glob('*'):
-            shutil.move(str(extracted), str(install_dir))
+        extracted = [d for d in unzip_dir.iterdir()][0]
+        shutil.move(str(extracted), str(install_dir))
     else:
         install_dir.mkdir(parents=True)
-        for extracted in unzip_dir.glob('*'):
+        for extracted in unzip_dir.iterdir():
             shutil.move(str(extracted), str(install_dir))
     if zipball.exists():
         zipball.unlink()

@@ -163,10 +163,29 @@ class SdkManagerTest(unittest.TestCase):
                 self.assertTrue(licenses_dir.exists())
                 self.assertEqual(4, len(list(licenses_dir.glob('*'))))
 
-    def test_install(self):
+    def test_install_and_rerun(self):
+        """install should work and rerunning should not change the install"""
+        # toplevels == 1
         with mock.patch('sys.argv', ['', 'build-tools;17.0.0']):
             sdkmanager.main()
-        self.assertTrue((self.sdk_dir / 'build-tools/17.0.0/aapt').exists())
+        aapt = self.sdk_dir / 'build-tools/17.0.0/aapt'
+        self.assertTrue(aapt.exists())
+        aapt.unlink()
+        self.assertFalse(aapt.exists())
+        with mock.patch('sys.argv', ['', 'build-tools;17.0.0']):
+            sdkmanager.main()
+        self.assertFalse(aapt.exists())
+
+        # toplevels > 1
+        with mock.patch('sys.argv', ['', 'cmake;3.18.1']):
+            sdkmanager.main()
+        cmake = self.sdk_dir / 'cmake/3.18.1/bin/cmake'
+        self.assertTrue(cmake.exists())
+        cmake.unlink()
+        self.assertFalse(cmake.exists())
+        with mock.patch('sys.argv', ['', 'cmake;3.18.1']):
+            sdkmanager.main()
+        self.assertFalse(cmake.exists())
 
     def test_verify(self):
         checksums = self.tests_dir / 'checksums.json'
