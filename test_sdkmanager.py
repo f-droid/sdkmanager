@@ -49,10 +49,14 @@ class SdkManagerTest(unittest.TestCase):
 
     def test_package_xml_template(self):
         self.assertEqual(
-            "<", sdkmanager.PACKAGE_XML_TEMPLATE[0], "no whitespace at start of XML"
+            "<",
+            sdkmanager.GENERIC_PACKAGE_XML_TEMPLATE[0],
+            "no whitespace at start of XML",
         )
         self.assertEqual(
-            ">", sdkmanager.PACKAGE_XML_TEMPLATE[-1], "no whitespace at end of XML"
+            ">",
+            sdkmanager.GENERIC_PACKAGE_XML_TEMPLATE[-1],
+            "no whitespace at end of XML",
         )
         baseurl = 'https://dl.google.com/android/repository/'
         for package, f, result in (

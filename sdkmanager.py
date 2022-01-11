@@ -73,7 +73,8 @@ INSTALL_DIRS = {
     'extras;android;m2repository': 'extras/android/m2repository',
 }
 
-PACKAGE_XML_TEMPLATE = textwrap.dedent(
+# xsi:type="ns3:genericDetailsType
+GENERIC_PACKAGE_XML_TEMPLATE = textwrap.dedent(
     """
     <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     <ns2:repository
@@ -961,7 +962,16 @@ def _install_zipball_from_cache(zipball, install_dir):
 
 
 def _generate_package_xml(install_dir, package, url):
-    """Generate package.xml for an installed package"""
+    """Generate package.xml for an installed package
+
+    TODO: This does not yet work for all package types.  Gradle Android
+    Plugin work better with no package.xml than wrong one.
+
+    """
+
+    if package.split(';')[0] in ('extras', 'platforms', 'sources', 'system-images'):
+        return
+
     revision = revisions[url]
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
     r = min(3, len(revision))
@@ -972,7 +982,7 @@ def _generate_package_xml(install_dir, package, url):
         'revision': ''.join(template[:r]).format(*revision),
     }
     with (install_dir / 'package.xml').open('w') as fp:
-        fp.write(PACKAGE_XML_TEMPLATE.format(**d))
+        fp.write(GENERIC_PACKAGE_XML_TEMPLATE.format(**d))
 
 
 def list():
