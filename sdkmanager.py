@@ -904,7 +904,7 @@ def install(to_install):
         else:
             install_dir = ANDROID_SDK_ROOT / package_sub_dir
         if '/' not in package_sub_dir and (install_dir / 'source.properties').exists():
-            shutil.rmtree(install_dir)
+            shutil.rmtree(str(install_dir))
         install_dir.parent.mkdir(parents=True, exist_ok=True)
         _install_zipball_from_cache(zipball, install_dir)
         _generate_package_xml(install_dir, package, url)
