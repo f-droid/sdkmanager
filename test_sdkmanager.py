@@ -130,8 +130,9 @@ class SdkManagerTest(unittest.TestCase):
                 m = sdkmanager.NDK_RELEASE_REGEX.search(url)
                 if m:
                     found_versions.append(m.group())
-        self.assertEqual(['r24', 'r24-beta1', 'r24-beta2', 'r24-rc1'], sorted(found_versions))
-
+        self.assertEqual(
+            ['r24', 'r24-beta1', 'r24-beta2', 'r24-rc1'], sorted(found_versions)
+        )
 
     def test_main_args(self):
         for command in ['install', 'licenses', 'list']:
