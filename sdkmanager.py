@@ -57,7 +57,7 @@ ANDROID_SDK_ROOT = os.getenv(
 )
 
 BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
-NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?')
+NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?(?:-(?:rc|beta)[0-9]+)?')
 M2REPOSITORY_REVISION_REGEX = re.compile(r'android_m2repository_r([0-9]+)\.zip')
 
 # The sub-directory to install a given package into, assumes ANDROID_SDK_ROOT as root

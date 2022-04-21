@@ -117,6 +117,22 @@ class SdkManagerTest(unittest.TestCase):
         )
         self.assertEqual((47, 0, 0), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
+        self.assertEqual(url, sdkmanager.packages[('ndk', 'r24')])
+        self.assertEqual((24, 0, 8215888), sdkmanager.revisions[url])
+
+    def test_ndk_release_regex(self):
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            urls = json.load(fp).keys()
+        found_versions = []
+        for url in urls:
+            if '-ndk-' in url and 'r24' in url:
+                m = sdkmanager.NDK_RELEASE_REGEX.search(url)
+                if m:
+                    found_versions.append(m.group())
+        self.assertEqual(['r24', 'r24-beta1', 'r24-beta2', 'r24-rc1'], sorted(found_versions))
+
+
     def test_main_args(self):
         for command in ['install', 'licenses', 'list']:
             with mock.patch('sys.argv', ['', '--' + command]):
