@@ -652,6 +652,14 @@ def parse_platforms(url, d):
     e.g. platforms;android-29, but there are multiple releases
     available, e.g. platform-29_r05.zip, platform-29_r04.zip, etc.
 
+    The build property ro.build.version.codename with the value of REL
+    means a full release, rather than preview/beta/etc.  That value
+    was not always present, but those releases oly hve a single
+    package.
+
+    platform24_r01.zip was released twice, the first being a mistake
+    with a platform.version of 'N' in source.properties.
+
     """
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
@@ -659,10 +667,11 @@ def parse_platforms(url, d):
         apilevel = source_properties['androidversion.apilevel']
         # TODO this should make all versions/revisions available, not only most recent
         key = ('platforms', 'android-%s' % apilevel)
-        if key in packages:
-            packages[key] = sorted([url, packages.get(key)])[-1]
-        else:
-            packages[key] = url
+        if re.match(r'^[1-9].*', source_properties.get('platform.version', '')):
+            if key in packages:
+                packages[key] = sorted([url, packages.get(key)])[-1]
+            else:
+                packages[key] = url
 
 
 def parse_platform_tools(url, d):

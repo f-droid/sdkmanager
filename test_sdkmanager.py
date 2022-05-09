@@ -111,6 +111,10 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('platforms', 'android-29')])
         self.assertEqual((5,), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/platform-31_r01.zip'
+        self.assertEqual(url, sdkmanager.packages[('platforms', 'android-31')])
+        self.assertEqual((1,), sdkmanager.revisions[url])
+
         url = 'https://dl.google.com/android/repository/android_m2repository_r47.zip'
         self.assertEqual(
             url, sdkmanager.packages[('extras', 'android', 'm2repository', '47')]
