@@ -125,6 +125,10 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('ndk', 'r24')])
         self.assertEqual((24, 0, 8215888), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/android-2.3.1_r02.zip'
+        self.assertEqual(url, sdkmanager.packages[('platforms', 'android-9')])
+        self.assertEqual((2,), sdkmanager.revisions[url])
+
     def test_ndk_release_regex(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
             urls = json.load(fp).keys()

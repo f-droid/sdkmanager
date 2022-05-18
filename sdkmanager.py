@@ -519,6 +519,7 @@ UeoNaY215eCZI12lp5pySjqSVt2rcJb1dzXp39Wk/1pN+nfJ098lT/+vlzz9XT36d/Xo/wfVo38X5v9d
 
 packages = dict()
 revisions = dict()
+platform_versions = dict()
 
 
 def verify(filename):
@@ -667,9 +668,18 @@ def parse_platforms(url, d):
         apilevel = source_properties['androidversion.apilevel']
         # TODO this should make all versions/revisions available, not only most recent
         key = ('platforms', 'android-%s' % apilevel)
-        if re.match(r'^[1-9].*', source_properties.get('platform.version', '')):
+        vstring = '%s.%s' % (
+            source_properties.get('platform.version'),
+            source_properties.get('pkg.revision'),
+        )
+        if re.match(r'^[1-9].*', vstring):
+            if key not in platform_versions:
+                platform_versions[key] = []
+            platform_version = LooseVersion(vstring)
+            platform_versions[key].append(platform_version)
             if key in packages:
-                packages[key] = sorted([url, packages.get(key)])[-1]
+                if platform_version == sorted(platform_versions[key])[-1]:
+                    packages[key] = url
             else:
                 packages[key] = url
 
