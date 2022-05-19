@@ -129,6 +129,14 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('platforms', 'android-9')])
         self.assertEqual((2,), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip'
+        self.assertEqual(url, sdkmanager.packages[('cmdline-tools', '5.0')])
+        self.assertEqual((5, 0), sdkmanager.revisions[url])
+
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-8092744_latest.zip'
+        self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
+        self.assertEqual((6, 0), sdkmanager.revisions[url])
+
     def test_ndk_release_regex(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
             urls = json.load(fp).keys()

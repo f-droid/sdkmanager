@@ -61,9 +61,11 @@ NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?(?:-(?:rc|beta)[0-9]+)?')
 M2REPOSITORY_REVISION_REGEX = re.compile(r'android_m2repository_r([0-9]+)\.zip')
 
 # The sub-directory to install a given package into, assumes ANDROID_SDK_ROOT as root
+# https://developer.android.com/studio/command-line/
 INSTALL_DIRS = {
     'build-tools': 'build-tools/{revision}',
     'cmake': 'cmake/{revision}',
+    'cmdline-tools': 'cmdline-tools/{revision}',
     'emulator': 'emulator',
     'ndk': 'ndk/{revision}',
     'ndk-bundle': 'ndk-bundle',
@@ -600,6 +602,29 @@ def parse_cmake(url, d):
             packages[key] = url
 
 
+def parse_cmdline_tools(url, d):
+    """Set up cmdline-tools with versioned and 'latest' package name"""
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
+        key = tuple(source_properties['pkg.path'].split(';'))
+        if key not in packages:
+            packages[key] = url
+
+    highest = '0'
+    for key, url in packages.items():
+        if key[0] != 'cmdline-tools' or len(key) < 2:
+            continue
+        version = key[-1]
+        if version == 'latest':
+            continue
+        if LooseVersion(version) > LooseVersion(highest):
+            highest = version
+    # TODO choose version for 'latest' based on --channel
+    # https://developer.android.com/studio/releases/cmdline-tools
+    packages[('cmdline-tools', 'latest')] = packages[('cmdline-tools', highest)]
+
+
 def parse_emulator(url, d):
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
@@ -811,6 +836,11 @@ def _process_checksums(checksums):
         elif basename.startswith('cmake'):
             for entry in checksums[url]:
                 parse_cmake(url, entry)
+        elif basename.startswith('cmdline-tools') or basename.startswith(
+            'commandlinetools'
+        ):
+            for entry in checksums[url]:
+                parse_cmdline_tools(url, entry)
         elif basename.startswith('emulator'):
             for entry in checksums[url]:
                 parse_emulator(url, entry)
