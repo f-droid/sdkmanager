@@ -137,6 +137,10 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
         self.assertEqual((6, 0), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
+        self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
+        self.assertEqual((3,), sdkmanager.revisions[url])
+
     def test_ndk_release_regex(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
             urls = json.load(fp).keys()

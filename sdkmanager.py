@@ -71,6 +71,7 @@ INSTALL_DIRS = {
     'ndk-bundle': 'ndk-bundle',
     'platforms': 'platforms/{revision}',
     'platform-tools': 'platform-tools',
+    'skiaparser': 'skiaparser/{revision}',
     'tools': 'tools',
     'extras;android;m2repository': 'extras/android/m2repository',
 }
@@ -750,6 +751,18 @@ def parse_tools(url, d):
     packages[('tools',)] = packages[('tools', highest)]
 
 
+def parse_skiaparser(url, d):
+    """Set up skiaparser with versioned and unversioned package name"""
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
+        key = tuple(source_properties['pkg.path'].split(';'))
+        if key in packages:
+            packages[key] = sorted([url, packages[key]])[-1]
+        else:
+            packages[key] = url
+
+
 def parse_repositories_cfg(f):
     """parse the supplied repositories.cfg and return a list of URLs"""
     with Path(f).open() as fp:
@@ -855,6 +868,9 @@ def _process_checksums(checksums):
         elif basename.startswith('android-') or basename.startswith('platform-'):
             for entry in checksums[url]:
                 parse_platforms(url, entry)
+        elif basename.startswith('skiaparser'):
+            for entry in checksums[url]:
+                parse_skiaparser(url, entry)
         elif basename.startswith('tools') or basename.startswith('sdk-tools-'):
             for entry in checksums[url]:
                 parse_tools(url, entry)
