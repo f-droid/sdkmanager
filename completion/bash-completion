@@ -21,11 +21,16 @@ function _sdkmanager()
         --verbose
         --version"
 
+  # generate with /opt/android-sdk/tools/bin/sdkmanager --list | cut -f 1 -d '|' | sort -u
   packages='
+      build-tools;17.0.0
+      build-tools;18.1.1
+      build-tools;19.0.0
       build-tools;19.1.0
       build-tools;20.0.0
       build-tools;21.1.2
       build-tools;22.0.1
+      build-tools;23.0.0
       build-tools;23.0.1
       build-tools;23.0.2
       build-tools;23.0.3
@@ -61,12 +66,15 @@ function _sdkmanager()
       build-tools;32.0.0
       cmake;3.10.2.4988404
       cmake;3.18.1
+      cmake;3.22.1
       cmake;3.6.4111459
       cmdline-tools;1.0
       cmdline-tools;2.1
       cmdline-tools;3.0
       cmdline-tools;4.0
       cmdline-tools;5.0
+      cmdline-tools;6.0
+      cmdline-tools;7.0
       cmdline-tools;latest
       emulator
       extras;android;m2repository
@@ -106,6 +114,8 @@ function _sdkmanager()
       ndk;22.1.7171670
       ndk;23.0.7599858
       ndk;23.1.7779620
+      ndk;24.0.8215888
+      patcher;v3
       patcher;v4
       platform-tools
       platforms;android-10
@@ -136,6 +146,7 @@ function _sdkmanager()
       platforms;android-9
       skiaparser;1
       skiaparser;2
+      skiaparser;3
       sources;android-15
       sources;android-16
       sources;android-17
@@ -153,6 +164,7 @@ function _sdkmanager()
       sources;android-29
       sources;android-30
       sources;android-31
+      sources;android-32
       system-images;android-10;default;armeabi-v7a
       system-images;android-10;default;x86
       system-images;android-14;default;armeabi-v7a
