@@ -1033,8 +1033,12 @@ def _generate_package_xml(install_dir, package, url):
 
     """
 
-    if package.split(';')[0] in ('extras', 'platforms', 'sources', 'system-images'):
+    package_base = package.split(';')[0]
+    if package_base in ('extras', 'platforms', 'sources', 'system-images'):
         return
+
+    if package_base == 'emulator':
+        package = 'emulator'
 
     revision = revisions[url]
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
