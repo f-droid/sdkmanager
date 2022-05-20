@@ -634,7 +634,9 @@ def parse_emulator(url, d):
         if key not in packages:
             packages[key] = url
         versioned = (key[0], source_properties['pkg.revision'])
-        if versioned not in packages:
+        if versioned in packages:
+            packages[versioned] = sorted([url, packages[key]])[-1]
+        else:
             packages[versioned] = url
 
 

@@ -141,6 +141,10 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
         self.assertEqual((3,), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/emulator-linux_x64-7033400.zip'
+        self.assertEqual(url, sdkmanager.packages[('emulator', '30.3.5')])
+        self.assertEqual((30, 3, 5), sdkmanager.revisions[url])
+
     def test_ndk_release_regex(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
             urls = json.load(fp).keys()
