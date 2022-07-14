@@ -3,6 +3,7 @@
 import io
 import json
 import os
+import requests
 import sdkmanager
 import shutil
 import stat
@@ -292,6 +293,33 @@ class SdkManagerTest(unittest.TestCase):
             self.assertFalse((install_dir / 'bad_abs_link').exists())
             self.assertFalse((install_dir / 'bad_rel_link').exists())
             self.assertFalse((install_dir / 'bad_rel_link2').exists())
+
+    def test_checksums_json_mirrors(self):
+        for url in sdkmanager.CHECKSUMS_URLS:
+            print(url)
+            urldir = sdkmanager.CACHEDIR / url.replace('https://', '').replace('/', '_')
+            urldir.mkdir()
+            os.chdir(str(urldir))
+
+            r = requests.get(url)
+            r.raise_for_status()
+            with open('checksums.json', 'w') as fp:
+                json.dump(r.json(), fp)
+
+            r = requests.get(url + '.asc')
+            r.raise_for_status()
+            with open('checksums.json.asc', 'w') as fp:
+                fp.write(r.text)
+        size = None
+        for f in sdkmanager.CACHEDIR.glob('*/checksums.json'):
+            if size is None:
+                size = f.stat().st_size
+            self.assertEqual(size, f.stat().st_size)
+        size = None
+        for f in sdkmanager.CACHEDIR.glob('*/checksums.json.asc'):
+            if size is None:
+                size = f.stat().st_size
+            self.assertEqual(size, f.stat().st_size)
 
 
 if __name__ == "__main__":
