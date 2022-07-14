@@ -30,6 +30,7 @@ class SdkManagerTest(unittest.TestCase):
             pass
 
     def setUp(self):
+        os.chdir(os.path.dirname(__file__))
         self.tests_dir = self.initial_tests_dir
         self.temp_sdk_dir = tempfile.TemporaryDirectory()
         self.sdk_dir = Path(self.temp_sdk_dir.name)
@@ -43,11 +44,17 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.CACHEDIR.mkdir(parents=True)
         os.environ['HOME'] = self.temp_home.name
 
+        sdkmanager.packages = dict()
+        sdkmanager.revisions = dict()
+        sdkmanager.platform_versions = dict()
+
     def tearDown(self):
         self.temp_home.cleanup()
         self.temp_sdk_dir.cleanup()
 
     def test_package_xml_template(self):
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            sdkmanager._process_checksums(json.load(fp))
         self.assertEqual(
             "<",
             sdkmanager.GENERIC_PACKAGE_XML_TEMPLATE[0],
@@ -288,7 +295,6 @@ class SdkManagerTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.chdir(os.path.dirname(__file__))
     newSuite = unittest.TestSuite()
     newSuite.addTest(unittest.makeSuite(SdkManagerTest))
     unittest.main(failfast=False)
