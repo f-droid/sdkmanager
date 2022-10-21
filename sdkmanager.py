@@ -1039,8 +1039,9 @@ def _generate_package_xml(install_dir, package, url):
     if package_base in ('extras', 'platforms', 'sources', 'system-images'):
         return
 
-    if package_base == 'emulator':
-        package = 'emulator'
+    # These packages should never have the version in the path.
+    if package_base in ('emulator', 'ndk-bundle', 'tools'):
+        package = package_base
 
     revision = revisions[url]
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
