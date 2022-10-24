@@ -100,6 +100,22 @@ test stretch:
     - *test-template
 
 
+
+test bullseye:
+  image: debian:bullseye-backports
+  script:
+    - *apt-template
+    - apt-get install
+          git
+          python3-argcomplete
+          python3-defusedxml
+          python3-requests
+          python3-requests-cache
+          python3-setuptools
+
+    - *test-template
+
+
 build_app_offline:
   image: debian:stretch
   only:
