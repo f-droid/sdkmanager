@@ -140,17 +140,17 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', '5.0')])
         self.assertEqual((5, 0), sdkmanager.revisions[url])
 
-        url = 'https://dl.google.com/android/repository/commandlinetools-linux-8092744_latest.zip'
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip'
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
-        self.assertEqual((6, 0), sdkmanager.revisions[url])
+        self.assertEqual((7, 0), sdkmanager.revisions[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
         self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
         self.assertEqual((3,), sdkmanager.revisions[url])
 
-        url = 'https://dl.google.com/android/repository/emulator-linux_x64-7033400.zip'
-        self.assertEqual(url, sdkmanager.packages[('emulator', '30.3.5')])
-        self.assertEqual((30, 3, 5), sdkmanager.revisions[url])
+        url = 'https://dl.google.com/android/repository/emulator-linux_x64-7226809.zip'
+        self.assertEqual(url, sdkmanager.packages[('emulator', '30.6.1')])
+        self.assertEqual((30, 6, 1), sdkmanager.revisions[url])
 
     def test_ndk_release_regex(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
