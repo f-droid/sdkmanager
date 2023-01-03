@@ -672,6 +672,15 @@ def parse_ndk(url, d):
         release = m.group()
         packages[('ndk', release)] = url
         packages[('ndk-bundle', release)] = url
+        # add fake revision for NDKs without source.properties
+        if url not in revisions:
+            revisions[url] = (1,)
+            vstring = re.search(r"android-ndk-r(\d*)([a-z])-linux", url)
+            if vstring:
+                revisions[url] = (
+                    int(vstring.group(1)),
+                    ord(vstring.group(2)) - ord("a"),
+                )
 
 
 def parse_platforms(url, d):
