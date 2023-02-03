@@ -31,6 +31,7 @@ import requests
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import textwrap
 import zipfile
@@ -520,9 +521,9 @@ UeoNaY215eCZI12lp5pySjqSVt2rcJb1dzXp39Wk/1pN+nfJ098lT/+vlzz9XT36d/Xo/wfVo38X5v9d
 36tff69+/b369b+y+vXfAHPyA9GQRwAA
 """
 
-packages = dict()
-revisions = dict()
-platform_versions = dict()
+packages = {}
+revisions = {}
+platform_versions = {}
 
 
 def verify(filename):
@@ -540,6 +541,7 @@ def verify(filename):
         ['gpgv', '--keyring', str(keyring.resolve()), f + '.asc', f],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        check=False,
     )
     if p.returncode == 0:
         return
@@ -672,6 +674,15 @@ def parse_ndk(url, d):
         release = m.group()
         packages[('ndk', release)] = url
         packages[('ndk-bundle', release)] = url
+        # add fake revision for NDKs without source.properties
+        if url not in revisions:
+            revisions[url] = (1,)
+            vstring = re.search(r"android-ndk-r(\d*)([a-z])-linux", url)
+            if vstring:
+                revisions[url] = (
+                    int(vstring.group(1)),
+                    ord(vstring.group(2)) - ord("a"),
+                )
 
 
 def parse_platforms(url, d):
@@ -781,7 +792,7 @@ def parse_repositories_cfg(f):
     i = 0
     repositories = []
     while i < count:
-        d = dict()
+        d = {}
         for k in ('disp', 'dist', 'enabled', 'src'):
             key_i = '%s%02d' % (k, i)
             if data.get(key_i):
@@ -828,7 +839,7 @@ def build_package_list(use_net=False):
             if etag_file.exists():
                 etag_file.unlink()
             print('ERROR:', e)
-            exit(1)
+            sys.exit(1)
         r.raise_for_status()
 
         if etag is None or etag != r.headers.get('etag'):
@@ -913,7 +924,7 @@ def licenses():
     if license_count == 0:
         print('All SDK package licenses accepted.')
         return
-    elif license_count == 1:
+    if license_count == 1:
         fl = ('1', '1', '', 's')
     else:
         fl = (license_count, total, 's', 've')
@@ -1086,7 +1097,7 @@ def main():
         ANDROID_SDK_ROOT = Path(ANDROID_SDK_ROOT)
     if not ANDROID_SDK_ROOT.parent.exists():
         print(__file__, 'writes into $ANDROID_SDK_ROOT but it does not exist!')
-        exit(1)
+        sys.exit(1)
     ANDROID_SDK_ROOT.mkdir(exist_ok=True)
 
     CACHEDIR.mkdir(mode=0o0700, parents=True, exist_ok=True)
@@ -1132,13 +1143,13 @@ def main():
                     '--update, --list, --version can be specified.'
                 )
                 print(USAGE)
-                exit(1)
+                sys.exit(1)
             command = k
     if command is None:
         command = 'install'
     elif command == 'version':
         print('25.2.0')
-        exit()
+        sys.exit()
 
     method = globals().get(command)
     if not method:

@@ -45,9 +45,9 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.CACHEDIR.mkdir(parents=True)
         os.environ['HOME'] = self.temp_home.name
 
-        sdkmanager.packages = dict()
-        sdkmanager.revisions = dict()
-        sdkmanager.platform_versions = dict()
+        sdkmanager.packages = {}
+        sdkmanager.revisions = {}
+        sdkmanager.platform_versions = {}
 
     def tearDown(self):
         self.temp_home.cleanup()
@@ -132,6 +132,12 @@ class SdkManagerTest(unittest.TestCase):
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
         self.assertEqual(url, sdkmanager.packages[('ndk', 'r24')])
         self.assertEqual((24, 0, 8215888), sdkmanager.revisions[url])
+
+        url = (
+            'https://dl.google.com/android/repository/android-ndk-r10e-linux-x86_64.zip'
+        )
+        self.assertEqual(url, sdkmanager.packages[('ndk', 'r10e')])
+        self.assertEqual((10, 4), sdkmanager.revisions[url])
 
         url = 'https://dl.google.com/android/repository/android-2.3.1_r02.zip'
         self.assertEqual(url, sdkmanager.packages[('platforms', 'android-9')])
