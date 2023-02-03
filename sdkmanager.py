@@ -31,6 +31,7 @@ import requests
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import textwrap
 import zipfile
@@ -838,7 +839,7 @@ def build_package_list(use_net=False):
             if etag_file.exists():
                 etag_file.unlink()
             print('ERROR:', e)
-            exit(1)
+            sys.exit(1)
         r.raise_for_status()
 
         if etag is None or etag != r.headers.get('etag'):
@@ -1096,7 +1097,7 @@ def main():
         ANDROID_SDK_ROOT = Path(ANDROID_SDK_ROOT)
     if not ANDROID_SDK_ROOT.parent.exists():
         print(__file__, 'writes into $ANDROID_SDK_ROOT but it does not exist!')
-        exit(1)
+        sys.exit(1)
     ANDROID_SDK_ROOT.mkdir(exist_ok=True)
 
     CACHEDIR.mkdir(mode=0o0700, parents=True, exist_ok=True)
@@ -1142,13 +1143,13 @@ def main():
                     '--update, --list, --version can be specified.'
                 )
                 print(USAGE)
-                exit(1)
+                sys.exit(1)
             command = k
     if command is None:
         command = 'install'
     elif command == 'version':
         print('25.2.0')
-        exit()
+        sys.exit()
 
     method = globals().get(command)
     if not method:
