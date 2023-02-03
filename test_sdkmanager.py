@@ -45,9 +45,9 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.CACHEDIR.mkdir(parents=True)
         os.environ['HOME'] = self.temp_home.name
 
-        sdkmanager.packages = dict()
-        sdkmanager.revisions = dict()
-        sdkmanager.platform_versions = dict()
+        sdkmanager.packages = {}
+        sdkmanager.revisions = {}
+        sdkmanager.platform_versions = {}
 
     def tearDown(self):
         self.temp_home.cleanup()

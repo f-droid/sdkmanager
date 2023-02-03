@@ -520,9 +520,9 @@ UeoNaY215eCZI12lp5pySjqSVt2rcJb1dzXp39Wk/1pN+nfJ098lT/+vlzz9XT36d/Xo/wfVo38X5v9d
 36tff69+/b369b+y+vXfAHPyA9GQRwAA
 """
 
-packages = dict()
-revisions = dict()
-platform_versions = dict()
+packages = {}
+revisions = {}
+platform_versions = {}
 
 
 def verify(filename):
@@ -790,7 +790,7 @@ def parse_repositories_cfg(f):
     i = 0
     repositories = []
     while i < count:
-        d = dict()
+        d = {}
         for k in ('disp', 'dist', 'enabled', 'src'):
             key_i = '%s%02d' % (k, i)
             if data.get(key_i):
