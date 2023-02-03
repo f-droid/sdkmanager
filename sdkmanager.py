@@ -923,7 +923,7 @@ def licenses():
     if license_count == 0:
         print('All SDK package licenses accepted.')
         return
-    elif license_count == 1:
+    if license_count == 1:
         fl = ('1', '1', '', 's')
     else:
         fl = (license_count, total, 's', 've')
