@@ -540,6 +540,7 @@ def verify(filename):
         ['gpgv', '--keyring', str(keyring.resolve()), f + '.asc', f],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        check=False,
     )
     if p.returncode == 0:
         return
