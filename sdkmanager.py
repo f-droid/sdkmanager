@@ -52,7 +52,6 @@ CHECKSUMS_URLS = (
 
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
 
-CACHEDIR = Path.home() / '.cache/sdkmanager'
 ANDROID_SDK_ROOT = os.getenv(
     'ANDROID_SDK_ROOT', os.getenv('ANDROID_HOME', '/opt/android-sdk')
 )
@@ -526,8 +525,15 @@ revisions = {}
 platform_versions = {}
 
 
+def get_cachedir():
+    cachedir = Path.home() / '.cache/sdkmanager'
+    cachedir.mkdir(mode=0o0700, parents=True, exist_ok=True)
+    return cachedir
+
+
 def verify(filename):
-    keyring = CACHEDIR / 'keyring.gpg'
+    cachedir = get_cachedir()
+    keyring = cachedir / 'keyring.gpg'
     with io.BytesIO(base64.b64decode(KEYRING_GPG_GZ_BASE64)) as infp:
         with gzip.GzipFile(fileobj=infp) as gzipfp:
             with keyring.open('wb') as fp:
@@ -560,7 +566,7 @@ def download_file(url, local_filename=None):
     """
     filename = os.path.basename(urlparse(url).path)
     if local_filename is None:
-        local_filename = CACHEDIR / filename
+        local_filename = get_cachedir() / filename
     print('Downloading', url, 'into', local_filename)
     r = requests.get(url, stream=True, allow_redirects=True, headers=HTTP_HEADERS)
     r.raise_for_status()
@@ -813,8 +819,9 @@ def parse_repositories_cfg(f):
 # TODO allow : and - as separator, e.g. ndk-22.1.7171670
 # only use android-sdk-transparency-log as source
 def build_package_list(use_net=False):
-    cached_checksums = CACHEDIR / 'checksums.json'
-    cached_checksums_signature = CACHEDIR / (cached_checksums.name + '.asc')
+    cachedir = get_cachedir()
+    cached_checksums = cachedir / 'checksums.json'
+    cached_checksums_signature = cachedir / (cached_checksums.name + '.asc')
     if cached_checksums.exists() and cached_checksums_signature.exists():
         verify(cached_checksums)
         with cached_checksums.open() as fp:
@@ -978,7 +985,7 @@ def install(to_install):
         if install_dir.exists():
             continue
 
-        zipball = CACHEDIR / os.path.basename(url)
+        zipball = get_cachedir() / os.path.basename(url)
         if not zipball.exists():
             download_file(url, zipball)
 
@@ -1091,7 +1098,7 @@ def list():
 
 
 def main():
-    global CACHEDIR, ANDROID_SDK_ROOT, ANDROID_NDK_ROOT
+    global ANDROID_SDK_ROOT, ANDROID_NDK_ROOT
 
     if ANDROID_SDK_ROOT:
         ANDROID_SDK_ROOT = Path(ANDROID_SDK_ROOT)
@@ -1099,8 +1106,6 @@ def main():
         print(__file__, 'writes into $ANDROID_SDK_ROOT but it does not exist!')
         sys.exit(1)
     ANDROID_SDK_ROOT.mkdir(exist_ok=True)
-
-    CACHEDIR.mkdir(mode=0o0700, parents=True, exist_ok=True)
 
     parser = argparse.ArgumentParser()
     # commands
