@@ -51,11 +51,6 @@ CHECKSUMS_URLS = (
 )
 
 HTTP_HEADERS = {'User-Agent': 'F-Droid'}
-
-ANDROID_SDK_ROOT = os.getenv(
-    'ANDROID_SDK_ROOT', os.getenv('ANDROID_HOME', '/opt/android-sdk')
-)
-
 BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
 NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?(?:-(?:rc|beta)[0-9]+)?')
 M2REPOSITORY_REVISION_REGEX = re.compile(r'android_m2repository_r([0-9]+)\.zip')
@@ -525,6 +520,29 @@ revisions = {}
 platform_versions = {}
 
 
+def get_android_home():
+    """Get the pathlib.Path that is the base dir of the Android SDK home
+
+    This first tries the canonical ANDROID_HOME, then tries the
+    deprecated ANDROID_SDK_ROOT, then falls back to a sensible,
+    hard-coded default.
+
+    https://developer.android.com/studio/command-line/variables#envar
+
+    """
+    path = os.getenv('ANDROID_HOME', os.getenv('ANDROID_SDK_ROOT', '/opt/android-sdk'))
+    if not path:
+        print('ERROR: ANDROID_HOME is set to blank!')
+        sys.exit(1)
+
+    android_home = Path(path)
+    if not android_home.parent.exists():
+        raise FileNotFoundError('ANDROID_HOME "%s" does not exist!' % android_home)
+    android_home.mkdir(exist_ok=True)
+
+    return android_home
+
+
 def get_cachedir():
     cachedir = Path.home() / '.cache/sdkmanager'
     cachedir.mkdir(mode=0o0700, parents=True, exist_ok=True)
@@ -905,7 +923,6 @@ def licenses():
     https://cs.android.com/android-studio/platform/tools/base/+/mirror-goog-studio-main:repository/src/main/java/com/android/repository/api/License.java
 
     """
-    global ANDROID_SDK_ROOT
     known_licenses = {
         'android-sdk-license': '\n8933bad161af4178b1185d1a37fbf41ea5269c55\n\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee',
         'android-sdk-preview-license': '\n84831b9409646a918e30573bab4c9c91346d8abd\n',
@@ -919,7 +936,7 @@ def licenses():
                 known_license_hashes.add(license)
 
     found_license_hashes = set()
-    licenses_dir = Path(ANDROID_SDK_ROOT) / 'licenses'
+    licenses_dir = get_android_home() / 'licenses'
     for f in licenses_dir.glob('*'):
         with f.open() as fp:
             for license in fp.read().strip().split('\n'):
@@ -951,7 +968,7 @@ def licenses():
                             fp.write(known)
 
 
-def install(to_install):
+def install(to_install, android_home=None):
     """Install specified packages, including downloading them as needed
 
     Certain packages are installed into versioned sub-directories
@@ -964,8 +981,16 @@ def install(to_install):
     to_install
         A single package or list of packages to install.
 
+    android_home
+        Optionally provide the ANDROID_HOME path as the install location.
+
     """
     global packages
+
+    if android_home is None:
+        android_home = get_android_home()
+    if isinstance(android_home, str):
+        android_home = Path(android_home)
 
     if isinstance(to_install, str):
         to_install = [to_install]
@@ -979,9 +1004,9 @@ def install(to_install):
             name = key[0]
 
         if len(key) > 1:
-            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name].format(revision=key[-1])
+            install_dir = android_home / INSTALL_DIRS[name].format(revision=key[-1])
         else:
-            install_dir = ANDROID_SDK_ROOT / INSTALL_DIRS[name]
+            install_dir = android_home / INSTALL_DIRS[name]
         if install_dir.exists():
             continue
 
@@ -1098,15 +1123,6 @@ def list():
 
 
 def main():
-    global ANDROID_SDK_ROOT, ANDROID_NDK_ROOT
-
-    if ANDROID_SDK_ROOT:
-        ANDROID_SDK_ROOT = Path(ANDROID_SDK_ROOT)
-    if not ANDROID_SDK_ROOT.parent.exists():
-        print(__file__, 'writes into $ANDROID_SDK_ROOT but it does not exist!')
-        sys.exit(1)
-    ANDROID_SDK_ROOT.mkdir(exist_ok=True)
-
     parser = argparse.ArgumentParser()
     # commands
     parser.add_argument("--install", action="store_true")

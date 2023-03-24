@@ -20,6 +20,12 @@ class SdkManagerTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # this isolates the tests from the local env, but not from each other
+        cls.isolate_home = tempfile.TemporaryDirectory()
+        cls.env_patcher = mock.patch.dict(
+            os.environ, {'HOME': cls.isolate_home.name}, clear=True
+        )
+        cls.env_patcher.start()
         cls.initial_tests_dir = Path(__file__).resolve().parent / 'tests'
         try:
             import requests_cache
@@ -30,19 +36,23 @@ class SdkManagerTest(unittest.TestCase):
         except ImportError:
             pass
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.env_patcher.stop()
+        cls.isolate_home.cleanup()
+
     def setUp(self):
         os.chdir(os.path.dirname(__file__))
         self.tests_dir = self.initial_tests_dir
         self.temp_sdk_dir = tempfile.TemporaryDirectory()
         self.sdk_dir = Path(self.temp_sdk_dir.name)
         self.assertTrue(self.sdk_dir.exists())
-        sdkmanager.ANDROID_SDK_ROOT = self.sdk_dir
-        os.environ.pop('ANDROID_SDK_ROOT', None)
-        os.environ.pop('ANDROID_HOME', None)
 
         self.temp_home = tempfile.TemporaryDirectory()
-        sdkmanager.CACHEDIR = Path(self.temp_home.name) / '.cache/sdkmanager'
-        sdkmanager.CACHEDIR.mkdir(parents=True)
+        self.cachedir = Path(self.temp_home.name) / '.cache/sdkmanager'
+        self.cachedir.mkdir(parents=True)
+        sdkmanager.get_cachedir = lambda: self.cachedir
+
         os.environ['HOME'] = self.temp_home.name
 
         sdkmanager.packages = {}
@@ -52,6 +62,12 @@ class SdkManagerTest(unittest.TestCase):
     def tearDown(self):
         self.temp_home.cleanup()
         self.temp_sdk_dir.cleanup()
+
+    @mock.patch.dict(os.environ)
+    def test_get_android_home_fail(self):
+        os.environ['ANDROID_HOME'] = 'nonexistent/android-sdk'
+        with self.assertRaises(FileNotFoundError):
+            sdkmanager.get_android_home()
 
     def test_package_xml_template(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
@@ -188,7 +204,9 @@ class SdkManagerTest(unittest.TestCase):
                 sdkmanager.main()
                 self.assertEqual(2, function.call_count)
 
+    @mock.patch.dict(os.environ)
     def test_licenses(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
         licenses_dir = self.sdk_dir / 'licenses'
         self.assertFalse(licenses_dir.exists())
         with mock.patch('sys.argv', ['', '--licenses']):
@@ -202,8 +220,40 @@ class SdkManagerTest(unittest.TestCase):
                 self.assertTrue(licenses_dir.exists())
                 self.assertEqual(4, len(list(licenses_dir.glob('*'))))
 
+    @mock.patch('sdkmanager.get_android_home')
+    @mock.patch('sdkmanager.download_file', mock.Mock())
+    @mock.patch('sdkmanager._install_zipball_from_cache', mock.Mock())
+    @mock.patch('sdkmanager._generate_package_xml', mock.Mock())
+    def test_install_android_home_arg(self, get_android_home):
+        """install can optionally handle getting ANDROID_HOME as arg"""
+        url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
+        sdkmanager.packages = {('ndk', 'r24'): url}
+        local_sdk_dir = Path(self.temp_sdk_dir.name) / 'local_sdk_dir'
+        local_ndk_dir = local_sdk_dir / 'ndk'
+        self.assertFalse(local_ndk_dir.exists())
+        sdkmanager.install('ndk;r24', local_sdk_dir)
+        get_android_home.assert_not_called()
+        self.assertTrue(local_ndk_dir.exists())
+
+    @mock.patch('sdkmanager.download_file', mock.Mock())
+    @mock.patch('sdkmanager._install_zipball_from_cache', mock.Mock())
+    @mock.patch('sdkmanager._generate_package_xml', mock.Mock())
+    @mock.patch.dict(os.environ)
+    def test_install_set_android_home(self):
+        """install should find ANDROID_HOME and create the ndk dir"""
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
+        sdkmanager.packages = {('ndk', 'r24'): url}
+        ndk_dir = self.sdk_dir / 'ndk'
+        self.assertFalse(ndk_dir.exists())
+        sdkmanager.install('ndk;r24')
+        self.assertTrue(ndk_dir.exists())
+
+    @mock.patch.dict(os.environ)
     def test_install_and_rerun(self):
         """install should work and rerunning should not change the install"""
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+
         # toplevels == 1
         with mock.patch('sys.argv', ['', 'build-tools;17.0.0']):
             sdkmanager.main()
@@ -301,9 +351,10 @@ class SdkManagerTest(unittest.TestCase):
             self.assertFalse((install_dir / 'bad_rel_link2').exists())
 
     def test_checksums_json_mirrors(self):
+        cachedir = sdkmanager.get_cachedir()
         for url in sdkmanager.CHECKSUMS_URLS:
             print(url)
-            urldir = sdkmanager.CACHEDIR / url.replace('https://', '').replace('/', '_')
+            urldir = cachedir / url.replace('https://', '').replace('/', '_')
             urldir.mkdir()
             os.chdir(str(urldir))
 
@@ -317,12 +368,12 @@ class SdkManagerTest(unittest.TestCase):
             with open('checksums.json.asc', 'w') as fp:
                 fp.write(r.text)
         size = None
-        for f in sdkmanager.CACHEDIR.glob('*/checksums.json'):
+        for f in cachedir.glob('*/checksums.json'):
             if size is None:
                 size = f.stat().st_size
             self.assertEqual(size, f.stat().st_size)
         size = None
-        for f in sdkmanager.CACHEDIR.glob('*/checksums.json.asc'):
+        for f in cachedir.glob('*/checksums.json.asc'):
             if size is None:
                 size = f.stat().st_size
             self.assertEqual(size, f.stat().st_size)
