@@ -20,6 +20,12 @@ class SdkManagerTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # this isolates the tests from the local env, but not from each other
+        cls.isolate_home = tempfile.TemporaryDirectory()
+        cls.env_patcher = mock.patch.dict(
+            os.environ, {'HOME': cls.isolate_home.name}, clear=True
+        )
+        cls.env_patcher.start()
         cls.initial_tests_dir = Path(__file__).resolve().parent / 'tests'
         try:
             import requests_cache
@@ -29,6 +35,11 @@ class SdkManagerTest(unittest.TestCase):
             requests_cache.install_cache(cache)
         except ImportError:
             pass
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.env_patcher.stop()
+        cls.isolate_home.cleanup()
 
     def setUp(self):
         os.chdir(os.path.dirname(__file__))
@@ -42,7 +53,6 @@ class SdkManagerTest(unittest.TestCase):
         self.cachedir.mkdir(parents=True)
         sdkmanager.get_cachedir = lambda: self.cachedir
 
-        mock.patch.dict(os.environ, clear=True)
         os.environ['HOME'] = self.temp_home.name
 
         sdkmanager.packages = {}
@@ -194,6 +204,7 @@ class SdkManagerTest(unittest.TestCase):
                 sdkmanager.main()
                 self.assertEqual(2, function.call_count)
 
+    @mock.patch.dict(os.environ)
     def test_licenses(self):
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
         licenses_dir = self.sdk_dir / 'licenses'
@@ -227,6 +238,7 @@ class SdkManagerTest(unittest.TestCase):
     @mock.patch('sdkmanager.download_file', mock.Mock())
     @mock.patch('sdkmanager._install_zipball_from_cache', mock.Mock())
     @mock.patch('sdkmanager._generate_package_xml', mock.Mock())
+    @mock.patch.dict(os.environ)
     def test_install_set_android_home(self):
         """install should find ANDROID_HOME and create the ndk dir"""
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
@@ -237,6 +249,7 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.install('ndk;r24')
         self.assertTrue(ndk_dir.exists())
 
+    @mock.patch.dict(os.environ)
     def test_install_and_rerun(self):
         """install should work and rerunning should not change the install"""
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
