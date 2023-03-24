@@ -38,8 +38,9 @@ class SdkManagerTest(unittest.TestCase):
         self.assertTrue(self.sdk_dir.exists())
 
         self.temp_home = tempfile.TemporaryDirectory()
-        sdkmanager.CACHEDIR = Path(self.temp_home.name) / '.cache/sdkmanager'
-        sdkmanager.CACHEDIR.mkdir(parents=True)
+        self.cachedir = Path(self.temp_home.name) / '.cache/sdkmanager'
+        self.cachedir.mkdir(parents=True)
+        sdkmanager.get_cachedir = lambda: self.cachedir
 
         mock.patch.dict(os.environ, clear=True)
         os.environ['HOME'] = self.temp_home.name
@@ -337,9 +338,10 @@ class SdkManagerTest(unittest.TestCase):
             self.assertFalse((install_dir / 'bad_rel_link2').exists())
 
     def test_checksums_json_mirrors(self):
+        cachedir = sdkmanager.get_cachedir()
         for url in sdkmanager.CHECKSUMS_URLS:
             print(url)
-            urldir = sdkmanager.CACHEDIR / url.replace('https://', '').replace('/', '_')
+            urldir = cachedir / url.replace('https://', '').replace('/', '_')
             urldir.mkdir()
             os.chdir(str(urldir))
 
@@ -353,12 +355,12 @@ class SdkManagerTest(unittest.TestCase):
             with open('checksums.json.asc', 'w') as fp:
                 fp.write(r.text)
         size = None
-        for f in sdkmanager.CACHEDIR.glob('*/checksums.json'):
+        for f in cachedir.glob('*/checksums.json'):
             if size is None:
                 size = f.stat().st_size
             self.assertEqual(size, f.stat().st_size)
         size = None
-        for f in sdkmanager.CACHEDIR.glob('*/checksums.json.asc'):
+        for f in cachedir.glob('*/checksums.json.asc'):
             if size is None:
                 size = f.stat().st_size
             self.assertEqual(size, f.stat().st_size)
