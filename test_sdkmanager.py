@@ -163,9 +163,9 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', '5.0')])
         self.assertEqual((5, 0), sdkmanager.revisions[url])
 
-        url = 'https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip'
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip'
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
-        self.assertEqual((7, 0), sdkmanager.revisions[url])
+        self.assertEqual((9, 0), sdkmanager.revisions[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
         self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
@@ -374,6 +374,7 @@ class SdkManagerTest(unittest.TestCase):
             self.assertFalse((install_dir / 'bad_rel_link2').exists())
 
     def test_checksums_json_mirrors(self):
+        """If this fails on a size error, update the local committed checksums.json."""
         cachedir = sdkmanager.get_cachedir()
         for url in sdkmanager.CHECKSUMS_URLS:
             print(url)

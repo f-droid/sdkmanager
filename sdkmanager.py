@@ -641,14 +641,17 @@ def parse_cmdline_tools(url, d):
         if key not in packages:
             packages[key] = url
 
-    highest = '0'
+    v = re.compile(r'^[0-9.]+$')
+    highest = None
     for key, url in packages.items():
         if key[0] != 'cmdline-tools' or len(key) < 2:
             continue
         version = key[-1]
         if version == 'latest':
             continue
-        if LooseVersion(version) > LooseVersion(highest):
+        if highest is None:
+            highest = version
+        elif v.match(version) and LooseVersion(version) > LooseVersion(highest):
             highest = version
     # TODO choose version for 'latest' based on --channel
     # https://developer.android.com/studio/releases/cmdline-tools
