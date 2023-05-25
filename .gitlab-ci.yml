@@ -133,17 +133,20 @@ test bookworm:
 build_app_offline:
   image: debian:bookworm
   only:
-    - branches
+    - build_app_offline  # TODO disabled until someone gets it working
   variables:
     ANDROID_HOME: /opt/android-sdk
   script:
+    - printf 'Package\x3a *\nPin\x3a release a=bookworm\nPin-Priority\x3a 1\n'
+        >> /etc/apt/preferences.d/bookworm
+    - echo 'deb https://deb.debian.org/debian bookworm main'
+        >> /etc/apt/sources.list
     - *apt-template
     - apt-get install
           default-jdk-headless
           git
           gradle
           gradle-debian-helper
-          libgradle-android-plugin-java
           python3-argcomplete
           python3-pip
           python3-requests
