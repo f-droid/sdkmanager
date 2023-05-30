@@ -163,9 +163,9 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', '5.0')])
         self.assertEqual((5, 0), sdkmanager.revisions[url])
 
-        url = 'https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip'
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip'
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
-        self.assertEqual((7, 0), sdkmanager.revisions[url])
+        self.assertEqual((9, 0), sdkmanager.revisions[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
         self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
@@ -248,6 +248,29 @@ class SdkManagerTest(unittest.TestCase):
         self.assertFalse(ndk_dir.exists())
         sdkmanager.install('ndk;r24')
         self.assertTrue(ndk_dir.exists())
+
+    @mock.patch('sdkmanager.download_file', mock.Mock())
+    @mock.patch('sdkmanager._install_zipball_from_cache', mock.Mock())
+    @mock.patch('sdkmanager._generate_package_xml')
+    @mock.patch.dict(os.environ)
+    def test_install_ndk_dir_layout(self, _generate_package_xml):
+        """Should install the NDK using the right version as the dir name."""
+
+        # pylint: disable=unused-argument
+        def mock_generate_package_xml(install_dir, package, url):
+            self.assertFalse(install_dir.name.startswith('r'))
+
+        _generate_package_xml.side_effect = mock_generate_package_xml
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            sdkmanager._process_checksums(json.load(fp))
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
+        sdkmanager.packages = {('ndk', 'r24'): url}
+        ndk_dir = self.sdk_dir / 'ndk'
+        self.assertFalse(ndk_dir.exists())
+        sdkmanager.install('ndk;r24')
+        self.assertTrue(ndk_dir.exists())
+        _generate_package_xml.assert_called()
 
     @mock.patch.dict(os.environ)
     def test_install_and_rerun(self):
@@ -351,6 +374,7 @@ class SdkManagerTest(unittest.TestCase):
             self.assertFalse((install_dir / 'bad_rel_link2').exists())
 
     def test_checksums_json_mirrors(self):
+        """If this fails on a size error, update the local committed checksums.json."""
         cachedir = sdkmanager.get_cachedir()
         for url in sdkmanager.CHECKSUMS_URLS:
             print(url)

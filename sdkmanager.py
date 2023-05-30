@@ -71,6 +71,9 @@ INSTALL_DIRS = {
     'extras;android;m2repository': 'extras/android/m2repository',
 }
 
+# NDK releases are like r25b, revisions are like 25.1.8937393. Dir names use revisions.
+NDK_REVISIONS = {}
+
 # xsi:type="ns3:genericDetailsType
 GENERIC_PACKAGE_XML_TEMPLATE = textwrap.dedent(
     """
@@ -638,14 +641,17 @@ def parse_cmdline_tools(url, d):
         if key not in packages:
             packages[key] = url
 
-    highest = '0'
+    v = re.compile(r'^[0-9.]+$')
+    highest = None
     for key, url in packages.items():
         if key[0] != 'cmdline-tools' or len(key) < 2:
             continue
         version = key[-1]
         if version == 'latest':
             continue
-        if LooseVersion(version) > LooseVersion(highest):
+        if highest is None:
+            highest = version
+        elif v.match(version) and LooseVersion(version) > LooseVersion(highest):
             highest = version
     # TODO choose version for 'latest' based on --channel
     # https://developer.android.com/studio/releases/cmdline-tools
@@ -685,6 +691,7 @@ def parse_m2repository(url, d):
 
 
 def parse_ndk(url, d):
+    revision = None
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
         _add_to_revisions(url, source_properties)
@@ -696,6 +703,8 @@ def parse_ndk(url, d):
     m = NDK_RELEASE_REGEX.search(url)
     if m:
         release = m.group()
+        if revision:
+            NDK_REVISIONS[release] = revision
         packages[('ndk', release)] = url
         packages[('ndk-bundle', release)] = url
         # add fake revision for NDKs without source.properties
@@ -1004,7 +1013,11 @@ def install(to_install, android_home=None):
             name = key[0]
 
         if len(key) > 1:
-            install_dir = android_home / INSTALL_DIRS[name].format(revision=key[-1])
+            if key[0] == 'ndk':
+                revision = NDK_REVISIONS.get(key[-1], key[-1])
+            else:
+                revision = key[-1]
+            install_dir = android_home / INSTALL_DIRS[name].format(revision=revision)
         else:
             install_dir = android_home / INSTALL_DIRS[name]
         if install_dir.exists():
