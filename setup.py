@@ -49,7 +49,7 @@ setup(
     entry_points={'console_scripts': ['sdkmanager=sdkmanager:main']},
     python_requires='>=3.5',
     cmdclass={'versioncheck': VersionCheckCommand},
-    install_requires=['argcomplete', 'requests > 2.12.2, != 2.18.0'],
+    install_requires=['argcomplete', 'requests > 2.12.2, != 2.18.0', 'urllib3<2'],
     extras_require={'test': ['defusedxml', 'requests-cache']},
     classifiers=[
         'Development Status :: 4 - Beta',
