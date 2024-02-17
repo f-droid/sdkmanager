@@ -35,10 +35,13 @@ import sys
 import tempfile
 import textwrap
 import zipfile
-from distutils.version import LooseVersion
 from pathlib import Path
 from urllib.parse import urlparse
 
+try:
+    from distutils.version import LooseVersion
+except ImportError:
+    from looseversion import LooseVersion
 
 COMPATIBLE_VERSION = '26.1.1'
 
