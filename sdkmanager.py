@@ -1012,6 +1012,9 @@ def install(to_install, android_home=None):
         to_install = [to_install]
     for package in to_install:
         key = tuple(package.split(';'))
+        if key not in packages:
+            print("""Warning: Failed to find package '%s'""" % package)
+            sys.exit(1)
         url = packages[key]
 
         if key[0] == 'extras' and len(key) in (3, 4):
