@@ -39,9 +39,13 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 try:
-    from distutils.version import LooseVersion
-except ImportError:
     from looseversion import LooseVersion
+except ImportError:
+    # distutils.version was removed in Python 3.12
+    from distutils.version import LooseVersion
+    import warnings
+
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 COMPATIBLE_VERSION = '26.1.1'
 
