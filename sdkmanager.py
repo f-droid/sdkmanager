@@ -21,6 +21,7 @@
 import argparse
 import base64
 import configparser
+import difflib
 import gzip
 import io
 import json
@@ -1014,6 +1015,10 @@ def install(to_install, android_home=None):
         key = tuple(package.split(';'))
         if key not in packages:
             print("""Warning: Failed to find package '%s'""" % package)
+            package_names = [';'.join(n) for n in packages]
+            m = difflib.get_close_matches(package, package_names, 1)
+            if m:
+                print("""Did you mean '%s'?""" % m[0])
             sys.exit(1)
         url = packages[key]
 
