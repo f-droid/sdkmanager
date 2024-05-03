@@ -28,7 +28,6 @@ import json
 import os
 import random
 import re
-import requests
 import shutil
 import stat
 import subprocess
@@ -39,12 +38,14 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
+
 try:
     from looseversion import LooseVersion
 except ImportError:
     # distutils.version was removed in Python 3.12
-    from distutils.version import LooseVersion
     import warnings
+    from distutils.version import LooseVersion
 
     warnings.filterwarnings("ignore", category=DeprecationWarning)
 
