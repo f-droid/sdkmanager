@@ -1116,6 +1116,10 @@ def _generate_package_xml(install_dir, package, url):
         package = package_base
 
     revision = revisions[url]
+
+    if package_base == 'ndk':
+        package = "ndk;{0}.{1}.{2}".format(*revision)
+
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
     r = min(3, len(revision))
     d = {
