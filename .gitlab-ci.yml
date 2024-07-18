@@ -84,7 +84,7 @@ lint_format_safety_bandit_checks:
 
 
 test pip:
-  image: debian:bullseye
+  image: debian:bookworm-slim
   script:
     - *apt-template
     - apt-get install
@@ -92,7 +92,7 @@ test pip:
           python3-pip
           python3-setuptools
           python3-wheel
-    - pip install -e .[test]
+    - pip install --break-system-packages .[test]
     - ./setup.py sdist
 
     - *test-template
