@@ -3,16 +3,18 @@
 import io
 import json
 import os
-import requests
-import sdkmanager
 import shutil
 import stat
 import tempfile
 import unittest
-from defusedxml import ElementTree
 from pathlib import Path
 from unittest import mock
 from zipfile import ZipFile, ZipInfo
+
+import requests
+from defusedxml import ElementTree
+
+import sdkmanager
 
 
 class SdkManagerTest(unittest.TestCase):
@@ -102,6 +104,21 @@ class SdkManagerTest(unittest.TestCase):
             self.assertIsNotNone(major, '<revision> must contain <major>')
             self.assertEqual(package.split(';')[1].split('.')[0], major.text)
             self.assertEqual(result[0], int(major.text))
+
+    def test_ndk_package_xml_version(self):
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            sdkmanager._process_checksums(json.load(fp))
+
+        def get_package_xml(package):
+            url = 'https://dl.google.com/android/repository/android-ndk-r25c-linux.zip'
+            install_dir = self.sdk_dir / 'install_dir' / package.split(';')[1]
+            install_dir.mkdir(parents=True)
+            sdkmanager._generate_package_xml(install_dir, package, url)
+            return (install_dir / 'package.xml').read_text()
+
+        self.assertEqual(
+            get_package_xml('ndk;25.2.9519653'), get_package_xml('ndk;r25c')
+        )
 
     def test_parse_repositories_cfg(self):
         rc = sdkmanager.parse_repositories_cfg(
