@@ -31,17 +31,16 @@ variables:
   - echo y | ./sdkmanager.py --licenses    # accept the licenses
   - timeout 120 ./sdkmanager.py --licenses # now there should be unaccepted licenses
 
-  - printf 'Package\x3a *\nPin\x3a release a=unstable\nPin-Priority\x3a 1\n'
-      >> /etc/apt/preferences.d/unstable
-  - echo 'deb https://deb.debian.org/debian unstable main'
-      >> /etc/apt/sources.list
   - apt-get update
-  - apt-get install -t unstable openjdk-8-jdk-headless
-  - ./sdkmanager.py tools
+  - apt-get install default-jdk-headless
+
+  - export ver=9.0
+  - ./sdkmanager.py "cmdline-tools;${ver}"
+  - export sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/${ver}/bin/sdkmanager"
   # ensure that Android's sdkmanager understands fdroid's installs
-  - $ANDROID_SDK_ROOT/tools/bin/sdkmanager 'build-tools;29.0.3' 'cmake;3.18.1'
+  - $sdkmanager 'build-tools;29.0.3' 'cmake;3.18.1'
   # ensure that Android's sdkmanager understands fdroid's licenses
-  - timeout 120 $ANDROID_SDK_ROOT/tools/bin/sdkmanager --licenses
+  - timeout 120 $sdkmanager --licenses
 
 
 black:
