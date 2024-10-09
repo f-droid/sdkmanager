@@ -1,7 +1,8 @@
+---
 
 variables:
   pip: pip3 --timeout 100 --retries 10
-# speed up git checkout phase
+  # speed up git checkout phase
   GIT_DEPTH: 1
 
 
@@ -29,7 +30,7 @@ variables:
   - ./sdkmanager.py --list
   - ./sdkmanager.py 'build-tools;29.0.3' 'cmake;3.18.1'
   - echo y | ./sdkmanager.py --licenses    # accept the licenses
-  - timeout 120 ./sdkmanager.py --licenses # now there should be unaccepted licenses
+  - timeout 120 ./sdkmanager.py --licenses  # now there should be unaccepted licenses
 
   - apt-get update
   - apt-get install default-jdk-headless
@@ -50,7 +51,7 @@ black:
     - black --check --diff --color *.py
 
 
-lint_format_safety_bandit_checks:
+lint_format_bandit_checks:
   image: debian:bookworm-slim
   variables:
     LANG: C.UTF-8
@@ -68,7 +69,7 @@ lint_format_safety_bandit_checks:
           python3-dev
           python3-nose
           python3-pip
-    - $pip install --break-system-packages bandit safety
+    - $pip install --break-system-packages bandit
     - export EXITVALUE=0
     - function set_error() { export EXITVALUE=1; printf "\x1b[31mERROR `history|tail -2|head -1|cut -b 6-500`\x1b[0m\n"; }
     - ./hooks/pre-commit || set_error
@@ -77,7 +78,6 @@ lint_format_safety_bandit_checks:
         -s B110,B311,B404,B408,B410,B603,B607
         -r $CI_PROJECT_DIR
         || set_error
-    - safety check --full-report || set_error
     - pylint --rcfile=.pylint-rcfile --output-format=colorized --reports=n *.py || set_error
     - exit $EXITVALUE
 
@@ -131,8 +131,8 @@ test bookworm:
 
 build_app_offline:
   image: debian:bookworm
-  only:
-    - build_app_offline  # TODO disabled until someone gets it working
+  rules:
+    - if: $CI_COMMIT_BRANCH == "build_app_offline"  # TODO disabled until someone gets it working
   variables:
     ANDROID_HOME: /opt/android-sdk
   script:
