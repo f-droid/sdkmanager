@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from setuptools import Command, setup
 import subprocess
 import sys
+
+from setuptools import Command, setup
 
 
 class VersionCheckCommand(Command):
@@ -52,7 +53,7 @@ setup(
     install_requires=[
         "argcomplete",
         "requests > 2.12.2, != 2.18.0",
-        "urllib3<2",
+        "urllib3",
         'looseversion; python_version>="3.12"',
     ],
     extras_require={'test': ['defusedxml', 'requests-cache']},
