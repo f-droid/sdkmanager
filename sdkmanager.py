@@ -39,6 +39,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from requests.adapters import HTTPAdapter, Retry
 
 try:
     from looseversion import LooseVersion
@@ -532,6 +533,26 @@ revisions = {}
 platform_versions = {}
 
 
+def requests_retry_session(
+    retries=3,
+    backoff_factor=0.6,
+    status_forcelist=(500, 502, 504),
+    session=None,
+):
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+
 def get_android_home():
     """Get the pathlib.Path that is the base dir of the Android SDK home
 
@@ -590,15 +611,15 @@ def verify(filename):
 def download_file(url, local_filename=None):
     """download a file with some extra tricks for reliability
 
-    The stream=True parameter keeps memory usage low.  GitLab Pages
-    will return 304 if a request is made too frequently.
-
+    The stream=True parameter keeps memory usage low.
     """
     filename = os.path.basename(urlparse(url).path)
     if local_filename is None:
         local_filename = get_cachedir() / filename
     print('Downloading', url, 'into', local_filename)
-    r = requests.get(url, stream=True, allow_redirects=True, headers=HTTP_HEADERS)
+    r = requests_retry_session().get(
+        url, stream=True, allow_redirects=True, headers=HTTP_HEADERS
+    )
     r.raise_for_status()
     if r.status_code == 304:
         raise RuntimeError('304 Not Modified: ' + url)
@@ -868,7 +889,6 @@ def build_package_list(use_net=False):
     etag_file = cached_checksums.parent / (cached_checksums.name + '.etag')
     if etag_file.exists():
         etag = etag_file.read_text()
-        HTTP_HEADERS['If-None-Match'] = etag
     else:
         etag = None
 
@@ -877,7 +897,13 @@ def build_package_list(use_net=False):
         download_file(checksums_url + '.asc')
 
         try:
-            r = requests.get(checksums_url, allow_redirects=True, headers=HTTP_HEADERS)
+            headers = HTTP_HEADERS.copy()
+            if etag:
+                headers['If-None-Match'] = etag
+
+            r = requests_retry_session().get(
+                checksums_url, allow_redirects=True, headers=headers
+            )
         except ValueError as e:
             if etag_file.exists():
                 etag_file.unlink()
