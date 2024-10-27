@@ -609,7 +609,7 @@ def verify(filename):
 
 
 def download_file(url, local_filename=None):
-    """download a file with some extra tricks for reliability
+    """Download a file with some extra tricks for reliability
 
     The stream=True parameter keeps memory usage low.
     """
@@ -840,7 +840,7 @@ def parse_skiaparser(url, d):
 
 
 def parse_repositories_cfg(f):
-    """parse the supplied repositories.cfg and return a list of URLs"""
+    """Parse the supplied repositories.cfg and return a list of URLs"""
     with Path(f).open() as fp:
         data = get_properties_dict(fp.read())
 
@@ -959,7 +959,7 @@ def _process_checksums(checksums):
 
 
 def licenses():
-    """prompt the user to accept the various licenses
+    """Prompt the user to accept the various licenses
 
     TODO actually implement it, this largely fakes it.
 
@@ -1021,7 +1021,6 @@ def install(to_install, android_home=None):
 
     Parameters
     ----------
-
     to_install
         A single package or list of packages to install.
 
@@ -1132,7 +1131,6 @@ def _generate_package_xml(install_dir, package, url):
     Plugin work better with no package.xml than wrong one.
 
     """
-
     package_base = package.split(';')[0]
     if package_base in ('extras', 'platforms', 'sources', 'system-images'):
         return
@@ -1144,7 +1142,7 @@ def _generate_package_xml(install_dir, package, url):
     revision = revisions[url]
 
     if package_base == 'ndk':
-        package = "ndk;{0}.{1}.{2}".format(*revision)
+        package = f"ndk;{'.'.join((str(x) for x in revision))}"
 
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
     r = min(3, len(revision))

@@ -89,9 +89,10 @@ class SdkManagerTest(unittest.TestCase):
             ('build-tools;28.0.1', 'build-tools_r28.0.1-linux.zip', (28, 0, 1)),
             ('cmake;3.10.2.4988404', 'cmake-3.10.2-linux-x86_64.zip', (3, 10, 2)),
             ('ndk;22.1.7171670', 'android-ndk-r22b-linux-x86_64.zip', (22, 1, 7171670)),
+            ('ndk;r10e', 'android-ndk-r10e-linux-x86_64.zip', (10, 4)),
         ):
             install_dir = self.sdk_dir / 'install_dir' / package.split(';')[0]
-            install_dir.mkdir(parents=True)
+            install_dir.mkdir(parents=True, exist_ok=True)
             sdkmanager._generate_package_xml(install_dir, package, baseurl + f)
             package_xml = install_dir / 'package.xml'
             self.assertTrue(
@@ -102,7 +103,6 @@ class SdkManagerTest(unittest.TestCase):
             self.assertIsNotNone(revision, 'package.xml must contain <revision>')
             major = revision.find('major')
             self.assertIsNotNone(major, '<revision> must contain <major>')
-            self.assertEqual(package.split(';')[1].split('.')[0], major.text)
             self.assertEqual(result[0], int(major.text))
 
     def test_ndk_package_xml_version(self):
@@ -242,7 +242,7 @@ class SdkManagerTest(unittest.TestCase):
     @mock.patch('sdkmanager._install_zipball_from_cache', mock.Mock())
     @mock.patch('sdkmanager._generate_package_xml', mock.Mock())
     def test_install_android_home_arg(self, get_android_home):
-        """install can optionally handle getting ANDROID_HOME as arg"""
+        """Install can optionally handle getting ANDROID_HOME as arg"""
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
         sdkmanager.packages = {('ndk', 'r24'): url}
         local_sdk_dir = Path(self.temp_sdk_dir.name) / 'local_sdk_dir'
@@ -257,7 +257,7 @@ class SdkManagerTest(unittest.TestCase):
     @mock.patch('sdkmanager._generate_package_xml', mock.Mock())
     @mock.patch.dict(os.environ)
     def test_install_set_android_home(self):
-        """install should find ANDROID_HOME and create the ndk dir"""
+        """Install should find ANDROID_HOME and create the ndk dir"""
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
         sdkmanager.packages = {('ndk', 'r24'): url}
@@ -291,7 +291,7 @@ class SdkManagerTest(unittest.TestCase):
 
     @mock.patch.dict(os.environ)
     def test_install_and_rerun(self):
-        """install should work and rerunning should not change the install"""
+        """Install should work and rerunning should not change the install"""
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
 
         # toplevels == 1
@@ -334,7 +334,6 @@ class SdkManagerTest(unittest.TestCase):
 
     def test_install_with_symlinks(self):
         """Some NDK zipballs might have symlinks in them."""
-
         zipdir = Path('android-ndk-r22b')
         zipball = Path(str(zipdir) + '-linux-x86_64.zip')
         with tempfile.TemporaryDirectory() as tmpdir:
