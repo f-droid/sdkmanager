@@ -75,7 +75,7 @@ lint_format_bandit_checks:
     - ./hooks/pre-commit || set_error
     - bandit
         -ii
-        -s B110,B311,B404,B408,B410,B603,B607
+        -s B110,B311,B404,B408,B603,B607
         -r $CI_PROJECT_DIR
         || set_error
     - pylint --rcfile=.pylint-rcfile --output-format=colorized --reports=n *.py || set_error

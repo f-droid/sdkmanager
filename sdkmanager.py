@@ -632,7 +632,7 @@ def download_file(url, local_filename=None):
 
 
 def get_properties_dict(string):
-    config = configparser.ConfigParser(delimiters=('='))
+    config = configparser.ConfigParser(delimiters=('='), strict=False)
     config.read_string('[DEFAULT]\n' + string)
     return dict(config.items('DEFAULT'))
 

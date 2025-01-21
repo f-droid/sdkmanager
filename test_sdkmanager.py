@@ -418,6 +418,28 @@ class SdkManagerTest(unittest.TestCase):
                 size = f.stat().st_size
             self.assertEqual(size, f.stat().st_size)
 
+    def test_get_properties_dict(self):
+        """Sometimes the Android Tools releases have strange stuff in them."""
+        for s in (
+            # fake manually generated data
+            "Pkg.UserSrc=true\nPkg.UserSrc=false\nPkg.Revision=17.0.0\n\n",
+            # https://dl.google.com/android/repository/build-tools_r17-linux.zip
+            "Pkg.UserSrc=false\nPkg.Revision=17.0.0\n\n",
+            # https://dl.google.com/android/repository/build-tools_r35.0.1_linux.zip
+            "Pkg.UserSrc=false\nPkg.UserSrc=false\nPkg.Revision=35.0.1\n#Pkg.Revision=35.0.0 rc4\n",
+            # https://dl.google.com/android/repository/platform-33_r01.zip
+            "Pkg.Desc=Android SDK Platform 13\nPkg.UserSrc=false\nPlatform.Version=13\nPlatform.CodeName=\nPkg.Revision=1\nAndroidVersion.ApiLevel=33\nAndroidVersion.ExtensionLevel=3\nAndroidVersion.IsBaseSdk=true\nLayoutlib.Api=15\nLayoutlib.Revision=1\nPlatform.MinToolsRev=22\n",
+        ):
+            d = sdkmanager.get_properties_dict(s)
+            self.assertEqual('false', d['pkg.usersrc'])
+
+    def test_get_properties_dict_uses_last_value(self):
+        """This test just demonstrates the behavior."""
+        d = sdkmanager.get_properties_dict("Pkg.UserSrc=false\nPkg.UserSrc=true\n")
+        self.assertEqual('true', d['pkg.usersrc'])
+        d = sdkmanager.get_properties_dict("Pkg.UserSrc=true\nPkg.UserSrc=false\n")
+        self.assertEqual('false', d['pkg.usersrc'])
+
 
 if __name__ == "__main__":
     newSuite = unittest.TestSuite()
