@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import traceback
 import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
@@ -884,8 +885,13 @@ def build_package_list(use_net=False):
     cached_checksums_signature = cachedir / (cached_checksums.name + '.asc')
     if cached_checksums.exists() and cached_checksums_signature.exists():
         verify(cached_checksums)
-        with cached_checksums.open() as fp:
-            _process_checksums(json.load(fp))
+        try:
+            with cached_checksums.open() as fp:
+                _process_checksums(json.load(fp))
+        except Exception:  # pylint: disable=broad-exception-caught
+            print(traceback.format_exc())
+            cached_checksums.unlink()
+            cached_checksums_signature.unlink()
     else:
         use_net = True  # need to fetch checksums.json, no cached version
 
