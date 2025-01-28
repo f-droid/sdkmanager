@@ -444,6 +444,28 @@ class SdkManagerTest(unittest.TestCase):
         d = sdkmanager.get_properties_dict("Pkg.UserSrc=true\nPkg.UserSrc=false\n")
         self.assertEqual('false', d['pkg.usersrc'])
 
+    def test_build_package_list_exception_on_verify_fail(self):
+        """If checksums.json signature fails to verify, delete it so it tries again."""
+        checksums_json = Path(self.cachedir) / 'checksums.json'
+        checksums_json.write_text('{"json": "value"}')
+        checksums_json_asc = Path(self.cachedir) / 'checksums.json.asc'
+        checksums_json_asc.write_text('fake sig')
+        with self.assertRaises(RuntimeError):
+            sdkmanager.build_package_list()
+        self.assertFalse(checksums_json.exists())
+        self.assertFalse(checksums_json_asc.exists())
+
+    @mock.patch('sdkmanager.verify', mock.Mock())
+    def test_build_package_list_rm_checksums_json_on_error(self):
+        """If checksums.json is corrupt, delete it so it tries again."""
+        checksums_json = Path(self.cachedir) / 'checksums.json'
+        checksums_json.write_text('{"corrupt json": ')
+        checksums_json_asc = Path(self.cachedir) / 'checksums.json.asc'
+        checksums_json_asc.write_text('fake sig')
+        sdkmanager.build_package_list()
+        self.assertFalse(checksums_json.exists())
+        self.assertFalse(checksums_json_asc.exists())
+
 
 if __name__ == "__main__":
     newSuite = unittest.TestSuite()
