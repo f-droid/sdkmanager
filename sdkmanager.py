@@ -724,8 +724,11 @@ def parse_ndk(url, d):
     revision = None
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
-        _add_to_revisions(url, source_properties)
-        revision = source_properties['pkg.revision']
+        revision = source_properties.get(
+            'pkg.baserevision', source_properties.get('pkg.revision')
+        )
+        if revision:
+            revisions[url] = tuple(LooseVersion(revision).version)
         for k in ('ndk', 'ndk-bundle'):
             key = (k, revision)
             if key not in packages:

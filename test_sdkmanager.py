@@ -166,6 +166,10 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('ndk', 'r24')])
         self.assertEqual((24, 0, 8215888), sdkmanager.revisions[url])
 
+        url = 'https://dl.google.com/android/repository/android-ndk-r28-beta1-linux.zip'
+        self.assertEqual(url, sdkmanager.packages[('ndk', 'r28-beta1')])
+        self.assertEqual((28, 0, 12433566), sdkmanager.revisions[url])
+
         url = (
             'https://dl.google.com/android/repository/android-ndk-r10e-linux-x86_64.zip'
         )
@@ -180,9 +184,9 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', '5.0')])
         self.assertEqual((5, 0), sdkmanager.revisions[url])
 
-        url = 'https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip'
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip'
         self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
-        self.assertEqual((9, 0), sdkmanager.revisions[url])
+        self.assertEqual((17, 0), sdkmanager.revisions[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
         self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
