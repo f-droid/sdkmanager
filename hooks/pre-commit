@@ -10,6 +10,7 @@ files=`git diff-index --cached HEAD 2>&1 | sed 's/^:.*     //' | uniq | cut -b10
 if [ -z "$files" ]; then
     PY_FILES="*.py"
     SH_FILES="hooks/pre-commit"
+    BASH_FILES="completion/bash-completion"
 else
     # if actually committing right now, then only run on the files
     # that are going to be committed at this moment
@@ -59,7 +60,7 @@ cmd_exists() {
 }
 
 find_command() {
-	for name in $@; do
+	for name in "$@"; do
 		for suff in "3" "-3" "-python3" ""; do
 			cmd=${name}${suff}
 			if cmd_exists $cmd; then
@@ -75,7 +76,6 @@ find_command() {
 DASH=$(find_command dash)
 PYFLAKES=$(find_command pyflakes)
 PEP8=$(find_command pycodestyle pep8)
-RUBY=$(find_command ruby)
 
 if [ "$PY_FILES" != " " ]; then
     if ! $PYFLAKES $PY_FILES; then

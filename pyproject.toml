@@ -1,5 +1,38 @@
+
+[tool.bandit]
+skips = ["B404", "B603", "B607"]
+
 [tool.black]
 skip-string-normalization = true
+
+[tool.pylint.main]
+# Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
+# number of processors available to use, and will cap the count on Windows to
+# avoid hangs.
+jobs = 0
+
+# Minimum Python version to use for version dependent checks. Will default to the
+# version used to run pylint.
+py-version = "3.9"
+
+[tool.pylint."messages control"]
+# Only show warnings with the listed confidence levels. Leave empty to show all.
+# Valid levels: HIGH, CONTROL_FLOW, INFERENCE, INFERENCE_FAILURE, UNDEFINED.
+confidence = ["CONTROL_FLOW", "HIGH", "INFERENCE", "INFERENCE_FAILURE"]
+
+# These are too pedantic in this context to be worth supporting.
+disable = [
+  "line-too-long",  # line length is enforced by black
+  "missing-function-docstring",  # TODO add docstrings
+  "missing-module-docstring",  # TODO add docstrings
+  "missing-timeout",
+  "use-maxsplit-arg",
+  "unspecified-encoding",  # TODO figure out the right encoding support
+]
+
+[tool.pylint.format]
+# Maximum number of characters on a single line.
+max-line-length = 88
 
 [tool.ruff.format]
 quote-style = "preserve"

@@ -1,5 +1,21 @@
 ---
 
+# Use merge request pipelines when a merge request is open for the branch.
+# Use branch pipelines when a merge request is not open for the branch.
+# https://docs.gitlab.com/ci/yaml/workflow/#switch-between-branch-pipelines-and-merge-request-pipelines
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+
+stages:
+  - lint
+  - test  # default for jobs that do not specify stage:
+
+
 variables:
   pip: pip3 --timeout 100 --retries 10
   # speed up git checkout phase
@@ -7,18 +23,56 @@ variables:
 
 
 .apt-template: &apt-template
-  - export LC_ALL=C.UTF-8
-  - export DEBIAN_FRONTEND=noninteractive
-  - echo Etc/UTC > /etc/timezone
-  - echo 'quiet "1";'
-       'APT::Get::Assume-Yes "true";'
-       'APT::Install-Recommends "0";'
-       'APT::Install-Suggests "0";'
-       'Acquire::Retries "20";'
-       'Dpkg::Use-Pty "0";'
-      > /etc/apt/apt.conf.d/99gitlab
-  - apt-get update
-  - apt-get dist-upgrade
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+    LANG: C.UTF-8
+  before_script:
+    - echo Etc/UTC > /etc/timezone
+    - echo 'APT::Install-Recommends "0";'
+           'APT::Install-Suggests "0";'
+           'APT::Get::Assume-Yes "true";'
+           'Acquire::Retries "20";'
+           'Dpkg::Use-Pty "0";'
+           'quiet "1";'
+        >> /etc/apt/apt.conf.d/99gitlab
+    # Ubuntu and other distros often lack https:// support
+    - grep Debian /etc/issue.net
+        && { find /etc/apt/sources.list* -type f | xargs sed -i s,http:,https:, ; }
+    - echo 'Acquire::https::Verify-Peer "false";' > /etc/apt/apt.conf.d/99nocacertificates
+    - apt-get update
+    - apt-get install ca-certificates
+    - rm /etc/apt/apt.conf.d/99nocacertificates
+    - apt-get dist-upgrade
+
+# For jobs that only need to run when there are changes to Python files.
+.python-rules-changes: &python-rules-changes
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - "*.py"
+
+
+.apt-test-template: &apt-test-template
+  - apt-get install
+          git
+          gpgv
+          python3-argcomplete
+          python3-defusedxml
+          python3-packaging
+          python3-requests
+          python3-requests-cache
+          python3-setuptools
+
+
+.pip-test-template: &pip-test-template
+    - apt-get install
+          git
+          gpgv
+          python3-pip
+          python3-setuptools
+          python3-wheel
+    - pip install --break-system-packages .[test]
+    - ./setup.py sdist
 
 
 # `timeout` is used in case one of those runs fails, and waits forever
@@ -45,19 +99,25 @@ variables:
 
 
 black:
-  image: python:slim
+  stage: lint
+  image: debian:bookworm-slim
+  <<: *python-rules-changes
+  <<: *apt-template
   script:
-    - pip install black
-    - black --check --diff --color *.py
+    - apt-get install black
+    - black --check --diff --color $CI_PROJECT_DIR
 
 
-lint_format_bandit_checks:
+# Run all the various linters and static analysis tools.
+hooks/pre-commit:
+  stage: lint
   image: debian:bookworm-slim
   variables:
     LANG: C.UTF-8
+  <<: *python-rules-changes
+  <<: *apt-template
   script:
-    - apt-get update
-    - apt-get -y install --no-install-recommends
+    - apt-get install
           bash
           ca-certificates
           dash
@@ -65,67 +125,88 @@ lint_format_bandit_checks:
           git
           pycodestyle
           pyflakes3
-          pylint
-          python3-dev
-          python3-nose
-          python3-pip
-    - $pip install --break-system-packages bandit
-    - export EXITVALUE=0
-    - function set_error() { export EXITVALUE=1; printf "\x1b[31mERROR `history|tail -2|head -1|cut -b 6-500`\x1b[0m\n"; }
-    - ./hooks/pre-commit || set_error
-    - bandit
-        -ii
-        -s B110,B311,B404,B408,B603,B607
-        -r $CI_PROJECT_DIR
-        || set_error
-    - pylint --rcfile=.pylint-rcfile --output-format=colorized --reports=n *.py || set_error
-    - exit $EXITVALUE
+    - ./hooks/pre-commit
 
 
-test pip:
-  image: debian:bookworm-slim
+bandit:
+  stage: lint
+  image: debian:trixie-slim
+  <<: *python-rules-changes
+  <<: *apt-template
   script:
-    - *apt-template
-    - apt-get install
-          git
-          python3-pip
-          python3-setuptools
-          python3-wheel
-    - pip install --break-system-packages .[test]
-    - ./setup.py sdist
+    - apt-get install bandit
+    - bandit -c pyproject.toml -r .
 
+
+pylint:
+  stage: lint
+  image: debian:trixie-slim
+  <<: *python-rules-changes
+  <<: *apt-template
+  script:
+    - apt-get install pylint python3-pylint-gitlab
+    - pylint --output-format=pylint_gitlab.GitlabCodeClimateReporter
+            *.py
+            > pylint-report.json
+        || { pylint --output-format=colorized --reports=n *.py; exit 1; }
+  artifacts:
+    reports:
+      codequality: pylint-report.json
+    when: always
+
+
+shellcheck:
+  stage: lint
+  image: debian:bookworm-slim
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - completion/bash-completion
+        - hooks/install-hooks.sh
+        - hooks/pre-commit
+  <<: *apt-template
+  script:
+    - apt-get install shellcheck
+    # TODO GitLab Code Quality report https://github.com/koalaman/shellcheck/issues/3155
+    - shellcheck --exclude SC2207,SC2086 --severity=warning --color=always
+        hooks/install-hooks.sh
+        hooks/pre-commit
+        completion/bash-completion
+
+
+test pip bookworm:
+  image: debian:bookworm-slim
+  <<: *apt-template
+  script:
+    - *pip-test-template
     - *test-template
 
-
+test pip trixie:
+  image: debian:trixie-slim
+  <<: *apt-template
+  script:
+    - *pip-test-template
+    - *test-template
 
 test bullseye:
   image: debian:bullseye-backports
+  <<: *apt-template
   script:
-    - *apt-template
-    - apt-get install
-          git
-          python3-argcomplete
-          python3-defusedxml
-          python3-requests
-          python3-requests-cache
-          python3-setuptools
-
+    - *apt-test-template
     - *test-template
-
-
 
 test bookworm:
   image: debian:bookworm
+  <<: *apt-template
   script:
-    - *apt-template
-    - apt-get install
-          git
-          python3-argcomplete
-          python3-defusedxml
-          python3-requests
-          python3-requests-cache
-          python3-setuptools
+    - *apt-test-template
+    - *test-template
 
+test trixie:
+  image: debian:trixie-slim
+  <<: *apt-template
+  script:
+    - *apt-test-template
     - *test-template
 
 
@@ -133,14 +214,12 @@ build_app_offline:
   image: debian:bookworm
   rules:
     - if: $CI_COMMIT_BRANCH == "build_app_offline"  # TODO disabled until someone gets it working
-  variables:
-    ANDROID_HOME: /opt/android-sdk
+  <<: *apt-template
   script:
     - printf 'Package\x3a *\nPin\x3a release a=bookworm\nPin-Priority\x3a 1\n'
         >> /etc/apt/preferences.d/bookworm
     - echo 'deb https://deb.debian.org/debian bookworm main'
         >> /etc/apt/sources.list
-    - *apt-template
     - apt-get install
           default-jdk-headless
           git
@@ -152,6 +231,7 @@ build_app_offline:
           python3-setuptools
           python3-wheel
     - $pip install --break-system-packages -e .
+    - export ANDROID_HOME=/opt/android-sdk
     - sdkmanager "build-tools;24.0.0" "platforms;android-23" "platforms;android-25"
     - mkdir -p $ANDROID_HOME/licenses/
     - echo '24333f8a63b6825ea9c5514f83c2829b004d1fee' > $ANDROID_HOME/licenses/android-sdk-license
