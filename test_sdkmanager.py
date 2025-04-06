@@ -358,31 +358,31 @@ class SdkManagerTest(unittest.TestCase):
                 testfile = str(zipdir / 'testfile')
                 zipfp.writestr(testfile, 'This is just a test!')
 
-                zipInfo = ZipInfo(str(zipdir / 'basename'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, os.path.basename(testfile))
+                zip_info = ZipInfo(str(zipdir / 'basename'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, os.path.basename(testfile))
 
-                zipInfo = ZipInfo(str(zipdir / 'executable'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = stat.S_IXUSR << 16
-                zipfp.writestr(zipInfo, '!#/bin/sh\necho This is an executable file\n')
+                zip_info = ZipInfo(str(zipdir / 'executable'))
+                zip_info.create_system = 3
+                zip_info.external_attr = stat.S_IXUSR << 16
+                zipfp.writestr(zip_info, '!#/bin/sh\necho This is an executable file\n')
 
-                zipInfo = ZipInfo(str(zipdir / 'bad_abs_link'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, '/etc/passwd')
+                zip_info = ZipInfo(str(zipdir / 'bad_abs_link'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, '/etc/passwd')
 
-                zipInfo = ZipInfo(str(zipdir / 'bad_rel_link'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, '../../../../../../../etc/passwd')
+                zip_info = ZipInfo(str(zipdir / 'bad_rel_link'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, '../../../../../../../etc/passwd')
 
                 # zipfp.writestr(str(zipdir / 'foo/mkdir'), 'shorthand to create the foo dir')
-                zipInfo = ZipInfo(str(zipdir / 'bad_rel_link2'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, 'foo/../../../../../../../../../etc/passwd')
+                zip_info = ZipInfo(str(zipdir / 'bad_rel_link2'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, 'foo/../../../../../../../../../etc/passwd')
 
             install_dir = Path(tmpdir) / 'install_dir'
             sdkmanager._install_zipball_from_cache(zipball, install_dir)
