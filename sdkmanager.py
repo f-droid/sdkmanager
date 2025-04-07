@@ -1037,8 +1037,6 @@ def install(to_install, android_home=None):
         Optionally provide the ANDROID_HOME path as the install location.
 
     """
-    global packages
-
     if android_home is None:
         android_home = get_android_home()
     if isinstance(android_home, str):
@@ -1166,8 +1164,6 @@ def _generate_package_xml(install_dir, package, url):
 
 
 def list():
-    global packages
-
     path_width = 0
     names = []
     for package in packages:
