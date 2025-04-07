@@ -465,9 +465,3 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.build_package_list()
         self.assertFalse(checksums_json.exists())
         self.assertFalse(checksums_json_asc.exists())
-
-
-if __name__ == "__main__":
-    newSuite = unittest.TestSuite()
-    newSuite.addTest(unittest.makeSuite(SdkManagerTest))
-    unittest.main(failfast=False)

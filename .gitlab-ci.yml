@@ -24,7 +24,7 @@ variables:
 # `timeout` is used in case one of those runs fails, and waits forever
 # for user input.
 .test-template: &test-template
-  - ./test_sdkmanager.py
+  - python3 -m unittest --verbose
 
   - export ANDROID_SDK_ROOT=/tmp/android-sdk
   - ./sdkmanager.py --list
