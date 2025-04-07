@@ -26,8 +26,8 @@ import gzip
 import io
 import json
 import os
-import random
 import re
+import secrets
 import shutil
 import stat
 import subprocess
@@ -902,7 +902,7 @@ def build_package_list(use_net=False):
         etag = None
 
     if use_net:
-        checksums_url = CHECKSUMS_URLS[random.randint(0, len(CHECKSUMS_URLS) - 1)]
+        checksums_url = secrets.choice(CHECKSUMS_URLS)
         download_file(checksums_url + '.asc')
 
         try:
