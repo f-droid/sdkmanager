@@ -402,12 +402,12 @@ class SdkManagerTest(unittest.TestCase):
             urldir.mkdir()
             os.chdir(str(urldir))
 
-            r = requests.get(url)
+            r = requests.get(url, timeout=120)
             r.raise_for_status()
             with open('checksums.json', 'w') as fp:
                 json.dump(r.json(), fp)
 
-            r = requests.get(url + '.asc')
+            r = requests.get(url + '.asc', timeout=120)
             r.raise_for_status()
             with open('checksums.json.asc', 'w') as fp:
                 fp.write(r.text)
