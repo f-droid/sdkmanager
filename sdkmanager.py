@@ -26,8 +26,8 @@ import gzip
 import io
 import json
 import os
-import random
 import re
+import secrets
 import shutil
 import stat
 import subprocess
@@ -529,9 +529,9 @@ UeoNaY215eCZI12lp5pySjqSVt2rcJb1dzXp39Wk/1pN+nfJ098lT/+vlzz9XT36d/Xo/wfVo38X5v9d
 36tff69+/b369b+y+vXfAHPyA9GQRwAA
 """
 
-packages = {}
-revisions = {}
-platform_versions = {}
+PACKAGES = {}
+REVISIONS = {}
+PLATFORM_VERSIONS = {}
 
 
 def requests_retry_session(
@@ -641,7 +641,7 @@ def get_properties_dict(string):
 def _add_to_revisions(url, source_properties):
     pkg_revision = source_properties.get('pkg.revision')
     if pkg_revision:
-        revisions[url] = tuple(LooseVersion(pkg_revision).version)
+        REVISIONS[url] = tuple(LooseVersion(pkg_revision).version)
 
 
 def parse_build_tools(url, d):
@@ -650,8 +650,8 @@ def parse_build_tools(url, d):
         _add_to_revisions(url, source_properties)
         revision = source_properties['pkg.revision'].replace(' ', '-')
         key = ('build-tools', revision)
-        if key not in packages:
-            packages[key] = url
+        if key not in PACKAGES:
+            PACKAGES[key] = url
 
 
 def parse_cmake(url, d):
@@ -659,8 +659,8 @@ def parse_cmake(url, d):
         source_properties = get_properties_dict(d['source.properties'])
         _add_to_revisions(url, source_properties)
         key = tuple(source_properties['pkg.path'].split(';'))
-        if key not in packages:
-            packages[key] = url
+        if key not in PACKAGES:
+            PACKAGES[key] = url
 
 
 def parse_cmdline_tools(url, d):
@@ -669,12 +669,12 @@ def parse_cmdline_tools(url, d):
         source_properties = get_properties_dict(d['source.properties'])
         _add_to_revisions(url, source_properties)
         key = tuple(source_properties['pkg.path'].split(';'))
-        if key not in packages:
-            packages[key] = url
+        if key not in PACKAGES:
+            PACKAGES[key] = url
 
     v = re.compile(r'^[0-9.]+$')
     highest = None
-    for key, url in packages.items():
+    for key, url in PACKAGES.items():
         if key[0] != 'cmdline-tools' or len(key) < 2:
             continue
         version = key[-1]
@@ -686,7 +686,7 @@ def parse_cmdline_tools(url, d):
             highest = version
     # TODO choose version for 'latest' based on --channel
     # https://developer.android.com/studio/releases/cmdline-tools
-    packages[('cmdline-tools', 'latest')] = packages[('cmdline-tools', highest)]
+    PACKAGES[('cmdline-tools', 'latest')] = PACKAGES[('cmdline-tools', highest)]
 
 
 def parse_emulator(url, d):
@@ -694,13 +694,13 @@ def parse_emulator(url, d):
         source_properties = get_properties_dict(d['source.properties'])
         _add_to_revisions(url, source_properties)
         key = tuple(source_properties['pkg.path'].split(';'))
-        if key not in packages:
-            packages[key] = url
+        if key not in PACKAGES:
+            PACKAGES[key] = url
         versioned = (key[0], source_properties['pkg.revision'])
-        if versioned in packages:
-            packages[versioned] = sorted([url, packages[key]])[-1]
+        if versioned in PACKAGES:
+            PACKAGES[versioned] = sorted([url, PACKAGES[key]])[-1]
         else:
-            packages[versioned] = url
+            PACKAGES[versioned] = url
 
 
 def parse_m2repository(url, d):
@@ -712,13 +712,13 @@ def parse_m2repository(url, d):
         if m:
             revision = m.group(1)
             key = ('extras', 'android', 'm2repository')
-            packages[key] = url
+            PACKAGES[key] = url
             versioned = key + tuple([revision])
-            if versioned not in packages:
-                packages[versioned] = url
+            if versioned not in PACKAGES:
+                PACKAGES[versioned] = url
             noleading0 = key + tuple([revision.lstrip('0')])
-            if noleading0 not in packages:
-                packages[noleading0] = url
+            if noleading0 not in PACKAGES:
+                PACKAGES[noleading0] = url
 
 
 def parse_ndk(url, d):
@@ -729,24 +729,24 @@ def parse_ndk(url, d):
             'pkg.baserevision', source_properties.get('pkg.revision')
         )
         if revision:
-            revisions[url] = tuple(LooseVersion(revision).version)
+            REVISIONS[url] = tuple(LooseVersion(revision).version)
         for k in ('ndk', 'ndk-bundle'):
             key = (k, revision)
-            if key not in packages:
-                packages[key] = url
+            if key not in PACKAGES:
+                PACKAGES[key] = url
     m = NDK_RELEASE_REGEX.search(url)
     if m:
         release = m.group()
         if revision:
             NDK_REVISIONS[release] = revision
-        packages[('ndk', release)] = url
-        packages[('ndk-bundle', release)] = url
+        PACKAGES[('ndk', release)] = url
+        PACKAGES[('ndk-bundle', release)] = url
         # add fake revision for NDKs without source.properties
-        if url not in revisions:
-            revisions[url] = (1,)
+        if url not in REVISIONS:
+            REVISIONS[url] = (1,)
             vstring = re.search(r"android-ndk-r(\d*)([a-z])-linux", url)
             if vstring:
-                revisions[url] = (
+                REVISIONS[url] = (
                     int(vstring.group(1)),
                     ord(vstring.group(2)) - ord("a"),
                 )
@@ -779,15 +779,15 @@ def parse_platforms(url, d):
             source_properties.get('pkg.revision'),
         )
         if re.match(r'^[1-9].*', vstring):
-            if key not in platform_versions:
-                platform_versions[key] = []
+            if key not in PLATFORM_VERSIONS:
+                PLATFORM_VERSIONS[key] = []
             platform_version = LooseVersion(vstring)
-            platform_versions[key].append(platform_version)
-            if key in packages:
-                if platform_version == sorted(platform_versions[key])[-1]:
-                    packages[key] = url
+            PLATFORM_VERSIONS[key].append(platform_version)
+            if key in PACKAGES:
+                if platform_version == sorted(PLATFORM_VERSIONS[key])[-1]:
+                    PACKAGES[key] = url
             else:
-                packages[key] = url
+                PACKAGES[key] = url
 
 
 def parse_platform_tools(url, d):
@@ -796,17 +796,17 @@ def parse_platform_tools(url, d):
         source_properties = get_properties_dict(d['source.properties'])
         _add_to_revisions(url, source_properties)
         key = ('platform-tools', source_properties.get('pkg.revision'))
-        if key not in packages:
-            packages[key] = url
+        if key not in PACKAGES:
+            PACKAGES[key] = url
 
     highest = '0'
-    for key, url in packages.items():
+    for key, url in PACKAGES.items():
         if key[0] != 'platform-tools' or len(key) < 2:
             continue
         version = key[-1]
         if LooseVersion(version) > LooseVersion(highest):
             highest = version
-    packages[('platform-tools',)] = packages[('platform-tools', highest)]
+    PACKAGES[('platform-tools',)] = PACKAGES[('platform-tools', highest)]
 
 
 def parse_tools(url, d):
@@ -818,17 +818,17 @@ def parse_tools(url, d):
         if not path:
             path = 'tools'
         key = (path, source_properties.get('pkg.revision'))
-        if key not in packages:
-            packages[key] = url
+        if key not in PACKAGES:
+            PACKAGES[key] = url
 
     highest = '0'
-    for key, url in packages.items():
+    for key, url in PACKAGES.items():
         if key[0] != 'tools' or len(key) < 2:
             continue
         version = key[-1]
         if LooseVersion(version) > LooseVersion(highest):
             highest = version
-    packages[('tools',)] = packages[('tools', highest)]
+    PACKAGES[('tools',)] = PACKAGES[('tools', highest)]
 
 
 def parse_skiaparser(url, d):
@@ -837,10 +837,10 @@ def parse_skiaparser(url, d):
         source_properties = get_properties_dict(d['source.properties'])
         _add_to_revisions(url, source_properties)
         key = tuple(source_properties['pkg.path'].split(';'))
-        if key in packages:
-            packages[key] = sorted([url, packages[key]])[-1]
+        if key in PACKAGES:
+            PACKAGES[key] = sorted([url, PACKAGES[key]])[-1]
         else:
-            packages[key] = url
+            PACKAGES[key] = url
 
 
 def parse_repositories_cfg(f):
@@ -902,7 +902,7 @@ def build_package_list(use_net=False):
         etag = None
 
     if use_net:
-        checksums_url = CHECKSUMS_URLS[random.randint(0, len(CHECKSUMS_URLS) - 1)]
+        checksums_url = secrets.choice(CHECKSUMS_URLS)
         download_file(checksums_url + '.asc')
 
         try:
@@ -1037,8 +1037,6 @@ def install(to_install, android_home=None):
         Optionally provide the ANDROID_HOME path as the install location.
 
     """
-    global packages
-
     if android_home is None:
         android_home = get_android_home()
     if isinstance(android_home, str):
@@ -1048,14 +1046,14 @@ def install(to_install, android_home=None):
         to_install = [to_install]
     for package in to_install:
         key = tuple(package.split(';'))
-        if key not in packages:
+        if key not in PACKAGES:
             print("""Warning: Failed to find package '%s'""" % package)
-            package_names = [';'.join(n) for n in packages]
+            package_names = [';'.join(n) for n in PACKAGES]
             m = difflib.get_close_matches(package, package_names, 1)
             if m:
                 print("""Did you mean '%s'?""" % m[0])
             sys.exit(1)
-        url = packages[key]
+        url = PACKAGES[key]
 
         if key[0] == 'extras' and len(key) in (3, 4):
             name = ';'.join(key[:3])
@@ -1148,7 +1146,7 @@ def _generate_package_xml(install_dir, package, url):
     if package_base in ('emulator', 'ndk-bundle', 'tools'):
         package = package_base
 
-    revision = revisions[url]
+    revision = REVISIONS[url]
 
     if package_base == 'ndk':
         package = f"ndk;{'.'.join((str(x) for x in revision))}"
@@ -1166,11 +1164,9 @@ def _generate_package_xml(install_dir, package, url):
 
 
 def list():
-    global packages
-
     path_width = 0
     names = []
-    for package in packages:
+    for package in PACKAGES:
         name = ';'.join(package)
         if len(name) > path_width:
             path_width = len(name)

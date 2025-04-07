@@ -57,9 +57,9 @@ class SdkManagerTest(unittest.TestCase):
 
         os.environ['HOME'] = self.temp_home.name
 
-        sdkmanager.packages = {}
-        sdkmanager.revisions = {}
-        sdkmanager.platform_versions = {}
+        sdkmanager.PACKAGES = {}
+        sdkmanager.REVISIONS = {}
+        sdkmanager.PLATFORM_VERSIONS = {}
 
     def tearDown(self):
         self.temp_home.cleanup()
@@ -145,56 +145,56 @@ class SdkManagerTest(unittest.TestCase):
     def test_process_checksums(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
             sdkmanager._process_checksums(json.load(fp))
-        self.assertTrue(('tools',) in sdkmanager.packages)
-        self.assertTrue(('platform-tools',) in sdkmanager.packages)
+        self.assertTrue(('tools',) in sdkmanager.PACKAGES)
+        self.assertTrue(('platform-tools',) in sdkmanager.PACKAGES)
 
         url = 'https://dl.google.com/android/repository/platform-29_r05.zip'
-        self.assertEqual(url, sdkmanager.packages[('platforms', 'android-29')])
-        self.assertEqual((5,), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-29')])
+        self.assertEqual((5,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/platform-31_r01.zip'
-        self.assertEqual(url, sdkmanager.packages[('platforms', 'android-31')])
-        self.assertEqual((1,), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-31')])
+        self.assertEqual((1,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/android_m2repository_r47.zip'
         self.assertEqual(
-            url, sdkmanager.packages[('extras', 'android', 'm2repository', '47')]
+            url, sdkmanager.PACKAGES[('extras', 'android', 'm2repository', '47')]
         )
-        self.assertEqual((47, 0, 0), sdkmanager.revisions[url])
+        self.assertEqual((47, 0, 0), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
-        self.assertEqual(url, sdkmanager.packages[('ndk', 'r24')])
-        self.assertEqual((24, 0, 8215888), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('ndk', 'r24')])
+        self.assertEqual((24, 0, 8215888), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/android-ndk-r28-beta1-linux.zip'
-        self.assertEqual(url, sdkmanager.packages[('ndk', 'r28-beta1')])
-        self.assertEqual((28, 0, 12433566), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('ndk', 'r28-beta1')])
+        self.assertEqual((28, 0, 12433566), sdkmanager.REVISIONS[url])
 
         url = (
             'https://dl.google.com/android/repository/android-ndk-r10e-linux-x86_64.zip'
         )
-        self.assertEqual(url, sdkmanager.packages[('ndk', 'r10e')])
-        self.assertEqual((10, 4), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('ndk', 'r10e')])
+        self.assertEqual((10, 4), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/android-2.3.1_r02.zip'
-        self.assertEqual(url, sdkmanager.packages[('platforms', 'android-9')])
-        self.assertEqual((2,), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-9')])
+        self.assertEqual((2,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip'
-        self.assertEqual(url, sdkmanager.packages[('cmdline-tools', '5.0')])
-        self.assertEqual((5, 0), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('cmdline-tools', '5.0')])
+        self.assertEqual((5, 0), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip'
-        self.assertEqual(url, sdkmanager.packages[('cmdline-tools', 'latest')])
-        self.assertEqual((17, 0), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('cmdline-tools', 'latest')])
+        self.assertEqual((17, 0), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
-        self.assertEqual(url, sdkmanager.packages[('skiaparser', '2')])
-        self.assertEqual((3,), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('skiaparser', '2')])
+        self.assertEqual((3,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/emulator-linux_x64-7226809.zip'
-        self.assertEqual(url, sdkmanager.packages[('emulator', '30.6.1')])
-        self.assertEqual((30, 6, 1), sdkmanager.revisions[url])
+        self.assertEqual(url, sdkmanager.PACKAGES[('emulator', '30.6.1')])
+        self.assertEqual((30, 6, 1), sdkmanager.REVISIONS[url])
 
     def test_ndk_release_regex(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
@@ -248,7 +248,7 @@ class SdkManagerTest(unittest.TestCase):
     def test_install_android_home_arg(self, get_android_home):
         """Install can optionally handle getting ANDROID_HOME as arg"""
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
-        sdkmanager.packages = {('ndk', 'r24'): url}
+        sdkmanager.PACKAGES = {('ndk', 'r24'): url}
         local_sdk_dir = Path(self.temp_sdk_dir.name) / 'local_sdk_dir'
         local_ndk_dir = local_sdk_dir / 'ndk'
         self.assertFalse(local_ndk_dir.exists())
@@ -264,7 +264,7 @@ class SdkManagerTest(unittest.TestCase):
         """Install should find ANDROID_HOME and create the ndk dir"""
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
-        sdkmanager.packages = {('ndk', 'r24'): url}
+        sdkmanager.PACKAGES = {('ndk', 'r24'): url}
         ndk_dir = self.sdk_dir / 'ndk'
         self.assertFalse(ndk_dir.exists())
         sdkmanager.install('ndk;r24')
@@ -286,7 +286,7 @@ class SdkManagerTest(unittest.TestCase):
             sdkmanager._process_checksums(json.load(fp))
         os.environ['ANDROID_HOME'] = str(self.sdk_dir)
         url = 'https://dl.google.com/android/repository/android-ndk-r24-linux.zip'
-        sdkmanager.packages = {('ndk', 'r24'): url}
+        sdkmanager.PACKAGES = {('ndk', 'r24'): url}
         ndk_dir = self.sdk_dir / 'ndk'
         self.assertFalse(ndk_dir.exists())
         sdkmanager.install('ndk;r24')
@@ -358,31 +358,31 @@ class SdkManagerTest(unittest.TestCase):
                 testfile = str(zipdir / 'testfile')
                 zipfp.writestr(testfile, 'This is just a test!')
 
-                zipInfo = ZipInfo(str(zipdir / 'basename'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, os.path.basename(testfile))
+                zip_info = ZipInfo(str(zipdir / 'basename'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, os.path.basename(testfile))
 
-                zipInfo = ZipInfo(str(zipdir / 'executable'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = stat.S_IXUSR << 16
-                zipfp.writestr(zipInfo, '!#/bin/sh\necho This is an executable file\n')
+                zip_info = ZipInfo(str(zipdir / 'executable'))
+                zip_info.create_system = 3
+                zip_info.external_attr = stat.S_IXUSR << 16
+                zipfp.writestr(zip_info, '!#/bin/sh\necho This is an executable file\n')
 
-                zipInfo = ZipInfo(str(zipdir / 'bad_abs_link'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, '/etc/passwd')
+                zip_info = ZipInfo(str(zipdir / 'bad_abs_link'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, '/etc/passwd')
 
-                zipInfo = ZipInfo(str(zipdir / 'bad_rel_link'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, '../../../../../../../etc/passwd')
+                zip_info = ZipInfo(str(zipdir / 'bad_rel_link'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, '../../../../../../../etc/passwd')
 
                 # zipfp.writestr(str(zipdir / 'foo/mkdir'), 'shorthand to create the foo dir')
-                zipInfo = ZipInfo(str(zipdir / 'bad_rel_link2'))
-                zipInfo.create_system = 3
-                zipInfo.external_attr = unix_st_mode << 16
-                zipfp.writestr(zipInfo, 'foo/../../../../../../../../../etc/passwd')
+                zip_info = ZipInfo(str(zipdir / 'bad_rel_link2'))
+                zip_info.create_system = 3
+                zip_info.external_attr = unix_st_mode << 16
+                zipfp.writestr(zip_info, 'foo/../../../../../../../../../etc/passwd')
 
             install_dir = Path(tmpdir) / 'install_dir'
             sdkmanager._install_zipball_from_cache(zipball, install_dir)
@@ -402,12 +402,12 @@ class SdkManagerTest(unittest.TestCase):
             urldir.mkdir()
             os.chdir(str(urldir))
 
-            r = requests.get(url)
+            r = requests.get(url, timeout=120)
             r.raise_for_status()
             with open('checksums.json', 'w') as fp:
                 json.dump(r.json(), fp)
 
-            r = requests.get(url + '.asc')
+            r = requests.get(url + '.asc', timeout=120)
             r.raise_for_status()
             with open('checksums.json.asc', 'w') as fp:
                 fp.write(r.text)
@@ -465,9 +465,3 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.build_package_list()
         self.assertFalse(checksums_json.exists())
         self.assertFalse(checksums_json_asc.exists())
-
-
-if __name__ == "__main__":
-    newSuite = unittest.TestSuite()
-    newSuite.addTest(unittest.makeSuite(SdkManagerTest))
-    unittest.main(failfast=False)
