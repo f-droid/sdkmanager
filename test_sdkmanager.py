@@ -143,6 +143,12 @@ class SdkManagerTest(unittest.TestCase):
         )
 
     def test_process_checksums(self):
+        """Test that the package string is properly matched to the URL.
+
+        There are some quirks:
+        https://android.googlesource.com/platform/tools/base/+/2a5cb6330f399286bf193b7b0c098766e4701f8a%5E%21/#F3
+
+        """
         with (self.tests_dir / 'checksums.json').open() as fp:
             sdkmanager._process_checksums(json.load(fp))
         self.assertTrue(('tools',) in sdkmanager.PACKAGES)
@@ -154,6 +160,18 @@ class SdkManagerTest(unittest.TestCase):
 
         url = 'https://dl.google.com/android/repository/platform-31_r01.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-31')])
+        self.assertEqual((1,), sdkmanager.REVISIONS[url])
+
+        url = 'https://dl.google.com/android/repository/platform-36_r02.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36')])
+        self.assertEqual((2,), sdkmanager.REVISIONS[url])
+
+        url = 'https://dl.google.com/android/repository/platform-36.1_r01.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36.1')])
+        self.assertEqual((1,), sdkmanager.REVISIONS[url])
+
+        url = 'https://dl.google.com/android/repository/platform-37.0_r01.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-37.0')])
         self.assertEqual((1,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/android_m2repository_r47.zip'
