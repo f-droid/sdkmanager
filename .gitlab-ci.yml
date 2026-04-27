@@ -80,18 +80,36 @@ variables:
 
   - export ANDROID_SDK_ROOT=/tmp/android-sdk
   - ./sdkmanager.py --list
-  - ./sdkmanager.py 'build-tools;29.0.3' 'cmake;3.18.1'
   - echo y | ./sdkmanager.py --licenses    # accept the licenses
   - timeout 120 ./sdkmanager.py --licenses  # now there should be unaccepted licenses
 
   - apt-get update
-  - apt-get install default-jdk-headless
+  #  cmdline-tools;20.0 requires Java 17+
+  - grep bullseye /etc/os-release
+      && apt-get install openjdk-17-jdk-headless
+      || apt-get install default-jdk-headless
 
-  - export ver=9.0
+  - export ver=20.0
   - ./sdkmanager.py "cmdline-tools;${ver}"
   - export sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/${ver}/bin/sdkmanager"
   # ensure that Android's sdkmanager understands fdroid's installs
-  - $sdkmanager 'build-tools;29.0.3' 'cmake;3.18.1'
+  - for package in
+      "build-tools;37.0.0"
+      "cmake;4.1.2"
+      "cmdline-tools;${ver}"
+      "ndk;29.0.14206865"
+      "platform-tools"
+      "platforms;android-37.0"
+      "skiaparser;3"
+      "tools"
+      ; do
+        ./sdkmanager.py $package;
+        echo "Does $sdkmanager detect that $package was installed:";
+        $sdkmanager --list
+          | grep --fixed-strings $package
+          | grep --fixed-strings ${package//;/\/};
+    done
+
   # ensure that Android's sdkmanager understands fdroid's licenses
   - timeout 120 $sdkmanager --licenses
 

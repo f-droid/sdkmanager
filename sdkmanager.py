@@ -90,14 +90,23 @@ GENERIC_PACKAGE_XML_TEMPLATE = textwrap.dedent(
     """
     <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     <ns2:repository
-        xmlns:ns2="http://schemas.android.com/repository/android/common/01"
-        xmlns:ns3="http://schemas.android.com/repository/android/generic/01"
-        xmlns:ns4="http://schemas.android.com/sdk/android/repo/addon2/01"
-        xmlns:ns5="http://schemas.android.com/sdk/android/repo/repository2/01"
-        xmlns:ns6="http://schemas.android.com/sdk/android/repo/sys-img2/01">
+        xmlns:ns2="http://schemas.android.com/repository/android/common/02"
+        xmlns:ns3="http://schemas.android.com/repository/android/common/01"
+        xmlns:ns4="http://schemas.android.com/repository/android/generic/01"
+        xmlns:ns5="http://schemas.android.com/repository/android/generic/02"
+        xmlns:ns6="http://schemas.android.com/sdk/android/repo/repository2/01"
+        xmlns:ns7="http://schemas.android.com/sdk/android/repo/repository2/02"
+        xmlns:ns8="http://schemas.android.com/sdk/android/repo/repository2/03"
+        xmlns:ns9="http://schemas.android.com/sdk/android/repo/addon2/01"
+        xmlns:ns10="http://schemas.android.com/sdk/android/repo/addon2/02"
+        xmlns:ns11="http://schemas.android.com/sdk/android/repo/addon2/03"
+        xmlns:ns12="http://schemas.android.com/sdk/android/repo/sys-img2/04"
+        xmlns:ns13="http://schemas.android.com/sdk/android/repo/sys-img2/03"
+        xmlns:ns14="http://schemas.android.com/sdk/android/repo/sys-img2/02"
+        xmlns:ns15="http://schemas.android.com/sdk/android/repo/sys-img2/01">
       <license id="{license_id}" type="text">{license}</license>
-      <localPackage path="{path}">
-        <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns3:genericDetailsType"/>
+      <localPackage path="{path}" obsolete="false">
+        {type_details}
         <revision>{revision}</revision>
         <display-name>PLACEHOLDER</display-name>
         <uses-license ref="{license_id}"/>
@@ -105,6 +114,28 @@ GENERIC_PACKAGE_XML_TEMPLATE = textwrap.dedent(
     </ns2:repository>
 """
 ).strip()
+
+GENERIC_TYPE_DETAILS = """<type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns5:genericDetailsType"/>"""
+
+# this is needed for platforms 36+
+PLATFORM_TYPE_DETAILS_TEMPLATE = """
+    <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns8:platformDetailsType">
+      <api-level>{api_level}</api-level>
+      <codename>{codename}</codename>
+      <extension-level>{extension_level}</extension-level>
+      <base-extension>{is_base_sdk}</base-extension>
+      <layoutlib api="{layoutlib_api}"/>
+    </type-details>
+""".strip()
+
+SOURCE_TYPE_DETAILS_TEMPLATE = """
+    <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns8:sourceDetailsType">
+      <api-level>{api_level}</api-level>
+      <codename>{codename}</codename>
+      <extension-level>{extension_level}</extension-level>
+      <base-extension>{is_base_sdk}</base-extension>
+    </type-details>
+""".strip()
 
 USAGE = """
 Usage:
@@ -532,6 +563,7 @@ UeoNaY215eCZI12lp5pySjqSVt2rcJb1dzXp39Wk/1pN+nfJ098lT/+vlzz9XT36d/Xo/wfVo38X5v9d
 PACKAGES = {}
 REVISIONS = {}
 PLATFORM_VERSIONS = {}
+SOURCE_PROPERTIES = {}
 
 
 def requests_retry_session(
@@ -639,9 +671,20 @@ def get_properties_dict(string):
 
 
 def _add_to_revisions(url, source_properties):
+    SOURCE_PROPERTIES[url] = source_properties
     pkg_revision = source_properties.get('pkg.revision')
     if pkg_revision:
         REVISIONS[url] = tuple(LooseVersion(pkg_revision).version)
+
+
+def _convert_source_properties_to_template(source_properties):
+    return {
+        'api_level': source_properties.get('androidversion.apilevel'),
+        'codename': source_properties.get('androidversion.codename', ''),
+        'extension_level': source_properties.get('androidversion.extensionlevel'),
+        'is_base_sdk': source_properties.get('androidversion.isbasesdk'),
+        'layoutlib_api': source_properties.get('layoutlib.api'),
+    }
 
 
 def parse_build_tools(url, d):
@@ -725,6 +768,7 @@ def parse_ndk(url, d):
     revision = None
     if 'source.properties' in d:
         source_properties = get_properties_dict(d['source.properties'])
+        SOURCE_PROPERTIES[url] = source_properties
         revision = source_properties.get(
             'pkg.baserevision', source_properties.get('pkg.revision')
         )
@@ -1139,8 +1183,20 @@ def _generate_package_xml(install_dir, package, url):
 
     """
     package_base = package.split(';')[0]
-    if package_base in ('extras', 'platforms', 'sources', 'system-images'):
+    if package_base in ('extras', 'system-images'):
         return
+
+    source_properties = SOURCE_PROPERTIES.get(url)
+    if source_properties:
+        spt = _convert_source_properties_to_template(source_properties)
+    else:
+        spt = {}
+    if package_base == 'platforms':
+        type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
+    elif package_base == 'sources':
+        type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
+    else:
+        type_details = GENERIC_TYPE_DETAILS
 
     # These packages should never have the version in the path.
     if package_base in ('emulator', 'ndk-bundle', 'tools'):
@@ -1158,6 +1214,7 @@ def _generate_package_xml(install_dir, package, url):
         'license_id': 'android-sdk-license',
         'path': package,
         'revision': ''.join(template[:r]).format(*revision),
+        'type_details': type_details,
     }
     with (install_dir / 'package.xml').open('w') as fp:
         fp.write(GENERIC_PACKAGE_XML_TEMPLATE.format(**d))
