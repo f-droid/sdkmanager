@@ -184,9 +184,9 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.PACKAGES[('cmdline-tools', '5.0')])
         self.assertEqual((5, 0), sdkmanager.REVISIONS[url])
 
-        url = 'https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip'
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('cmdline-tools', 'latest')])
-        self.assertEqual((17, 0), sdkmanager.REVISIONS[url])
+        self.assertEqual((20, 0), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('skiaparser', '2')])
