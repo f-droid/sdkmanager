@@ -69,10 +69,8 @@ variables:
           git
           gpgv
           python3-pip
-          python3-setuptools
-          python3-wheel
     - pip install --break-system-packages .[test]
-    - ./setup.py sdist
+    - pip wheel .
 
 
 # `timeout` is used in case one of those runs fails, and waits forever

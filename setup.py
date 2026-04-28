@@ -53,7 +53,6 @@ setup(
     install_requires=[
         "argcomplete",
         "requests > 2.12.2, != 2.18.0",
-        "urllib3",
         'looseversion; python_version>="3.12"',
     ],
     extras_require={'test': ['defusedxml', 'requests-cache']},
