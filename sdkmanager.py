@@ -108,7 +108,7 @@ GENERIC_PACKAGE_XML_TEMPLATE = textwrap.dedent(
       <localPackage path="{path}" obsolete="false">
         {type_details}
         <revision>{revision}</revision>
-        <display-name>PLACEHOLDER</display-name>
+        <display-name>{display_name}</display-name>
         <uses-license ref="{license_id}"/>
       </localPackage>
     </ns2:repository>
@@ -1181,6 +1181,14 @@ def _generate_package_xml(install_dir, package, url):
     TODO: This does not yet work for all package types.  Gradle Android
     Plugin work better with no package.xml than wrong one.
 
+    In a rational package system, all the required metadata would be
+    embedded in the package itself.  Android Tools did design that to
+    some degree with source.properties, but for whatever reason, they
+    just hacked <display-name> into the index file, e.g.
+    repository2-3.xml.  Pkg.Desc looks similar, but it is not.  Luckily,
+    in the upstream source, it is clear to see that the strings used in
+    <display-name> are a fixed string format that is easy to reproduce.
+
     """
     package_base = package.split(';')[0]
     if package_base in ('extras', 'system-images'):
@@ -1191,25 +1199,38 @@ def _generate_package_xml(install_dir, package, url):
         spt = _convert_source_properties_to_template(source_properties)
     else:
         spt = {}
+
+    revision = REVISIONS[url]
+    revision_name = '.'.join((str(x) for x in revision))
+
+    type_details = GENERIC_TYPE_DETAILS
+    display_name = ''
     if package_base == 'platforms':
         type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
+        display_name = f'Android SDK Platform {spt["api_level"]}'
     elif package_base == 'sources':
         type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
-    else:
-        type_details = GENERIC_TYPE_DETAILS
+        display_name = f'Sources for Android {spt["api_level"]}'
+    elif package_base == 'ndk':
+        package = f"ndk;{revision_name}"
+        display_name = f'NDK (Side by side) {revision_name}'
+    elif package_base == 'build-tools':
+        display_name = f'Android SDK Build-Tools {revision_name}'
+    elif package_base == 'cmdline-tools':
+        display_name = 'Android SDK Command-line Tools'
+    elif package_base == 'platform-tools':
+        display_name = 'Android SDK Platform-Tools'
+    elif package_base == 'skiaparser':
+        display_name = source_properties.get('pkg.desc')
 
     # These packages should never have the version in the path.
     if package_base in ('emulator', 'ndk-bundle', 'tools'):
         package = package_base
 
-    revision = REVISIONS[url]
-
-    if package_base == 'ndk':
-        package = f"ndk;{'.'.join((str(x) for x in revision))}"
-
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
     r = min(3, len(revision))
     d = {
+        'display_name': display_name,
         'license': ANDROID_SDK_LICENSE,
         'license_id': 'android-sdk-license',
         'path': package,
