@@ -186,6 +186,13 @@ test pip trixie:
     - *pip-test-template
     - *test-template
 
+test pip forky:
+  image: debian:forky-slim
+  <<: *apt-template
+  script:
+    - *pip-test-template
+    - *test-template
+
 test bullseye:
   image: debian:bullseye-backports
   <<: *apt-template
@@ -202,6 +209,13 @@ test bookworm:
 
 test trixie:
   image: debian:trixie-slim
+  <<: *apt-template
+  script:
+    - *apt-test-template
+    - *test-template
+
+test forky:
+  image: debian:forky-slim
   <<: *apt-template
   script:
     - *apt-test-template
