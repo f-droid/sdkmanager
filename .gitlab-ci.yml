@@ -212,7 +212,7 @@ test pip forky:
     - *test-template
 
 test bullseye:
-  image: debian:bullseye-backports
+  image: debian:bullseye-slim
   <<: *apt-template
   script:
     - *apt-test-template
