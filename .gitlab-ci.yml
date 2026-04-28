@@ -116,7 +116,7 @@ variables:
 
 black:
   stage: lint
-  image: debian:bookworm-slim
+  image: debian:trixie-slim
   <<: *python-rules-changes
   <<: *apt-template
   script:
@@ -127,7 +127,7 @@ black:
 # Run all the various linters and static analysis tools.
 hooks/pre-commit:
   stage: lint
-  image: debian:bookworm-slim
+  image: debian:trixie-slim
   variables:
     LANG: C.UTF-8
   <<: *python-rules-changes
@@ -173,7 +173,7 @@ pylint:
 
 shellcheck:
   stage: lint
-  image: debian:bookworm-slim
+  image: debian:trixie-slim
   rules:
     - changes:
         - .gitlab-ci.yml
