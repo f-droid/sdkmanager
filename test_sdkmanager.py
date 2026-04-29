@@ -76,6 +76,47 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             sdkmanager.get_android_home()
 
+    @mock.patch.dict(os.environ)
+    def test_get_installed_packages_empty(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        self.assertEqual([], sdkmanager._get_installed_packages())
+
+    @mock.patch.dict(os.environ)
+    def test_get_installed_packages_max_scan_depth(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        d = self.sdk_dir
+        findme = None
+        for i in range(12):
+            if i == 9:
+                (d / 'package.xml').write_text('find me!')
+                findme = d
+            d = d / str(i)
+            d.mkdir()
+        (d / 'package.xml').write_text('PLACEHOLDER that should not be found')
+        self.assertEqual(f'{self.sdk_dir}/0/1/2/3/4/5/6/7/8', str(findme))
+        self.assertEqual(
+            [str(findme.relative_to(self.sdk_dir)).replace('/', ';')],
+            sdkmanager._get_installed_packages(),
+        )
+
+    @mock.patch.dict(os.environ)
+    def test_get_installed_packages(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        os.chdir(self.sdk_dir)
+        packages = [
+            'build-tools;35.0.0',
+            'system-images;android-29;default;x86_64',
+            'tools',
+        ]
+        for p in packages:
+            d = self.sdk_dir / p.replace(';', '/')
+            d.mkdir(parents=True)
+            (d / 'package.xml').write_text('find me!')
+        self.assertEqual(
+            packages,
+            sdkmanager._get_installed_packages(),
+        )
+
     def test_package_xml_template(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
             sdkmanager._process_checksums(json.load(fp))

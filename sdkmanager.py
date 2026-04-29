@@ -1241,6 +1241,28 @@ def _generate_package_xml(install_dir, package, url):
         fp.write(GENERIC_PACKAGE_XML_TEMPLATE.format(**d))
 
 
+def _get_installed_packages():
+    """Get the list of locally installed packages based on package.xml.
+
+    SDK package names are the same as the Pkg.Path value from
+    source.properties, and are also the directory that the package is
+    unzipped into.
+
+    This is inspired by LocalRepoLoaderImpl.getPackages(), but it might
+    be worth it to actually implement the same algorithm.
+
+    """
+    installed = []
+    android_home = str(get_android_home().resolve())
+    for root, dirs, files in os.walk(android_home):
+        path = str(os.path.relpath(root, android_home))
+        if len(path.split('/')) > 10:
+            continue
+        if 'package.xml' in files:
+            installed.append(path.replace('/', ';'))
+    return sorted(installed)
+
+
 def list():
     path_width = 0
     names = []
@@ -1249,11 +1271,15 @@ def list():
         if len(name) > path_width:
             path_width = len(name)
         names.append(name)
-    print('Installed Packages:')
+    print('Installed packages:')
     print('  ' + 'Path'.ljust(path_width) + ' | Version       | Description | Location')
     print(
         '  ' + '-------'.ljust(path_width) + ' | -------       | -------     | -------'
     )
+    for p in _get_installed_packages():
+        print(
+            f'  {p.ljust(path_width)} |               |             | {p.replace(";", "/")}'
+        )
     print()
     print('Available Packages:')
     print('  ' + 'Path'.ljust(path_width) + ' | Version       | Description')

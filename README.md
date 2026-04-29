@@ -22,6 +22,10 @@ The AOSP source code is hard to navigate for many reasons.  Here are a couple of
   https://android.googlesource.com/platform/development/+/refs/tags/android-16.0.0_r4/sdk/
 * _repository2-x.xml_ templates:
   https://android.googlesource.com/platform/tools/base/+/1fd0588c0b284453faea362de4d22b2c5e5f1a70/sdklib/src/main/resources/xsd/
+* _sdkmanager_ source code:
+  https://android.googlesource.com/platform/tools/base/+/1fd0588c0b284453faea362de4d22b2c5e5f1a70/sdklib/src/main/java/com/android/sdklib/tool/sdkmanager/
+* Shared repository code:
+  https://android.googlesource.com/platform/tools/base/+/1fd0588c0b284453faea362de4d22b2c5e5f1a70/repository/src/main/java/com/android/repository/api/
 
 
 ## Code Format
