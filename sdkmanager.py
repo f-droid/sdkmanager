@@ -1158,10 +1158,10 @@ def _install_zipball_from_cache(zipball, install_dir):
                     os.chmod(writefile, 0o644)  # nosec bandit B103
             toplevels.update([p.split('/')[0] for p in zipfp.namelist()])
     except zipfile.BadZipFile as e:
-        print('ERROR:', e)
+        print('ERROR:', zipball, e)
         if zipball.exists():
             zipball.unlink()
-        return
+        sys.exit(1)
 
     print('Installing into', install_dir)
     if len(toplevels) == 1:
