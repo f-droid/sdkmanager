@@ -1,11 +1,12 @@
 
-A drop-in replacement for `sdkmanager` from the Android SDK written in Python.
+A drop-in replacement for `sdkmanager` from the Android SDK that gets package metadata from a signed index generated from an [append-only transparency log](https://gitlab.com/fdroid/android-sdk-transparency-log/-/blob/master/README.md). Additionally, it uses SHA-256 checksums to verify packages before installing (Google's `sdkmanager` uses unsigned index and SHA1 checksums).
+
+It is written in Python with minimal dependencies to make it easy to deploy anywhere and cover many use cases that Google's does not.  This makes it really easy to package for distros like Debian or Homebrew, so users can just `apt-get install sdkmanager` and get verified Android SDK package installs based on the root that is already trusted in their system. Also, it is trivial to install a single arbitrary package without having to install the full requirements of Google's sdkmanager (e.g. Java 17, etc).  A security researcher can install just `build-tools;36.0.0`. Or a translator can just install `emulator` and `system-images;android-36;default;x86_64`.
+
 It implements the exact API of the
 [`sdkmanager`](https://developer.android.com/studio/command-line/sdkmanager)
 command line.  It only deviates from that API if it can be done while being 100%
-compatible.
-
-The project also attempts to maintain the same terminal output so it can be
+compatible. The project also attempts to maintain the same terminal output so it can be
 compatible with things that scrape `sdkmanager` output.
 
 ## Architecture
