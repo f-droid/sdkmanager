@@ -1,4 +1,7 @@
 
+[build-system]
+requires = ["setuptools"]
+
 [tool.bandit]
 skips = ["B404", "B603", "B607"]
 

@@ -9,16 +9,17 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from xml.etree import ElementTree  # nosec B405: only used for test XML files
 from zipfile import ZipFile, ZipInfo
 
 import requests
-from defusedxml import ElementTree
 
 import sdkmanager
 
 
-class SdkManagerTest(unittest.TestCase):
-    """test the core sdkmanager functions"""
+# pylint: disable=invalid-name
+class SetUpTearDownMixin:
+    """A mixin with no tests in it for shared setUp and tearDown."""
 
     @classmethod
     def setUpClass(cls):
@@ -65,11 +66,56 @@ class SdkManagerTest(unittest.TestCase):
         self.temp_home.cleanup()
         self.temp_sdk_dir.cleanup()
 
+
+class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
+    """test the core sdkmanager functions"""
+
     @mock.patch.dict(os.environ)
     def test_get_android_home_fail(self):
         os.environ['ANDROID_HOME'] = 'nonexistent/android-sdk'
         with self.assertRaises(FileNotFoundError):
             sdkmanager.get_android_home()
+
+    @mock.patch.dict(os.environ)
+    def test_get_installed_packages_empty(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        self.assertEqual([], sdkmanager._get_installed_packages())
+
+    @mock.patch.dict(os.environ)
+    def test_get_installed_packages_max_scan_depth(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        d = self.sdk_dir
+        findme = None
+        for i in range(12):
+            if i == 9:
+                (d / 'package.xml').write_text('find me!')
+                findme = d
+            d = d / str(i)
+            d.mkdir()
+        (d / 'package.xml').write_text('PLACEHOLDER that should not be found')
+        self.assertEqual(f'{self.sdk_dir}/0/1/2/3/4/5/6/7/8', str(findme))
+        self.assertEqual(
+            [str(findme.relative_to(self.sdk_dir)).replace('/', ';')],
+            sdkmanager._get_installed_packages(),
+        )
+
+    @mock.patch.dict(os.environ)
+    def test_get_installed_packages(self):
+        os.environ['ANDROID_HOME'] = str(self.sdk_dir)
+        os.chdir(self.sdk_dir)
+        packages = [
+            'build-tools;35.0.0',
+            'system-images;android-29;default;x86_64',
+            'tools',
+        ]
+        for p in packages:
+            d = self.sdk_dir / p.replace(';', '/')
+            d.mkdir(parents=True)
+            (d / 'package.xml').write_text('find me!')
+        self.assertEqual(
+            packages,
+            sdkmanager._get_installed_packages(),
+        )
 
     def test_package_xml_template(self):
         with (self.tests_dir / 'checksums.json').open() as fp:
@@ -98,27 +144,13 @@ class SdkManagerTest(unittest.TestCase):
             self.assertTrue(
                 package_xml.exists(), '_generate_package_xml() creates package.xml'
             )
-            root = ElementTree.parse(str(package_xml)).getroot()
+            tree = ElementTree.parse(str(package_xml))  # nosec B314: test XML file
+            root = tree.getroot()
             revision = root.find('./localPackage/revision')
             self.assertIsNotNone(revision, 'package.xml must contain <revision>')
             major = revision.find('major')
             self.assertIsNotNone(major, '<revision> must contain <major>')
             self.assertEqual(result[0], int(major.text))
-
-    def test_ndk_package_xml_version(self):
-        with (self.tests_dir / 'checksums.json').open() as fp:
-            sdkmanager._process_checksums(json.load(fp))
-
-        def get_package_xml(package):
-            url = 'https://dl.google.com/android/repository/android-ndk-r25c-linux.zip'
-            install_dir = self.sdk_dir / 'install_dir' / package.split(';')[1]
-            install_dir.mkdir(parents=True)
-            sdkmanager._generate_package_xml(install_dir, package, url)
-            return (install_dir / 'package.xml').read_text()
-
-        self.assertEqual(
-            get_package_xml('ndk;25.2.9519653'), get_package_xml('ndk;r25c')
-        )
 
     def test_parse_repositories_cfg(self):
         rc = sdkmanager.parse_repositories_cfg(
@@ -143,6 +175,12 @@ class SdkManagerTest(unittest.TestCase):
         )
 
     def test_process_checksums(self):
+        """Test that the package string is properly matched to the URL.
+
+        There are some quirks:
+        https://android.googlesource.com/platform/tools/base/+/2a5cb6330f399286bf193b7b0c098766e4701f8a%5E%21/#F3
+
+        """
         with (self.tests_dir / 'checksums.json').open() as fp:
             sdkmanager._process_checksums(json.load(fp))
         self.assertTrue(('tools',) in sdkmanager.PACKAGES)
@@ -154,6 +192,18 @@ class SdkManagerTest(unittest.TestCase):
 
         url = 'https://dl.google.com/android/repository/platform-31_r01.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-31')])
+        self.assertEqual((1,), sdkmanager.REVISIONS[url])
+
+        url = 'https://dl.google.com/android/repository/platform-36_r02.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36')])
+        self.assertEqual((2,), sdkmanager.REVISIONS[url])
+
+        url = 'https://dl.google.com/android/repository/platform-36.1_r01.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36.1')])
+        self.assertEqual((1,), sdkmanager.REVISIONS[url])
+
+        url = 'https://dl.google.com/android/repository/platform-37.0_r01.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-37.0')])
         self.assertEqual((1,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/android_m2repository_r47.zip'
@@ -184,9 +234,9 @@ class SdkManagerTest(unittest.TestCase):
         self.assertEqual(url, sdkmanager.PACKAGES[('cmdline-tools', '5.0')])
         self.assertEqual((5, 0), sdkmanager.REVISIONS[url])
 
-        url = 'https://dl.google.com/android/repository/commandlinetools-linux-12700392_latest.zip'
+        url = 'https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('cmdline-tools', 'latest')])
-        self.assertEqual((17, 0), sdkmanager.REVISIONS[url])
+        self.assertEqual((20, 0), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/skiaparser-7478287-linux.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('skiaparser', '2')])
@@ -465,3 +515,59 @@ class SdkManagerTest(unittest.TestCase):
         sdkmanager.build_package_list()
         self.assertFalse(checksums_json.exists())
         self.assertFalse(checksums_json_asc.exists())
+
+
+class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
+    """Test the generation of package.xml."""
+
+    def setUp(self):
+        super().setUp()
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            sdkmanager._process_checksums(json.load(fp))
+
+    def _get_package_xml(self, url, package):
+        install_dir = self.sdk_dir / 'install_dir' / package.split(';')[1]
+        install_dir.mkdir(parents=True, exist_ok=True)
+        sdkmanager._generate_package_xml(install_dir, package, url)
+        return install_dir / 'package.xml'
+
+    def _standardize(self, package_xml_path):
+        tree = ElementTree.parse(package_xml_path)  # nosec B314: test XML file
+        ElementTree.indent(tree, space="", level=0)
+        return tree.getroot()
+
+    def _assert_elements_equal(self, e1, e2):
+        self.assertEqual(e1.tag, e2.tag)
+        self.assertEqual(e1.text, e2.text)
+        self.assertEqual(e1.tail, e2.tail)
+        self.assertEqual(e1.attrib, e2.attrib)
+        self.assertEqual(len(e1), len(e2))
+        return all(self._assert_elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
+
+    def test_ndk_package_xml_version(self):
+        url = 'https://dl.google.com/android/repository/android-ndk-r25c-linux.zip'
+        self.assertEqual(
+            self._get_package_xml(url, 'ndk;25.2.9519653').read_text(),
+            self._get_package_xml(url, 'ndk;r25c').read_text(),
+        )
+
+    def test_ndk_r23b_package_xml(self):
+        url = 'https://dl.google.com/android/repository/android-ndk-r23b-linux.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'ndk;23.1.7779620')),
+            self._standardize(self.tests_dir / 'ndk-23.1.7779620_package.xml'),
+        )
+
+    def test_platforms_33_package_xml(self):
+        url = 'https://dl.google.com/android/repository/platform-33-ext3_r03.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'platforms;android-33')),
+            self._standardize(self.tests_dir / 'android-33_package.xml'),
+        )
+
+    def test_platforms_37_0_package_xml(self):
+        url = 'https://dl.google.com/android/repository/platform-37.0_r01.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'platforms;android-37.0')),
+            self._standardize(self.tests_dir / 'android-37.0_package.xml'),
+        )
