@@ -101,6 +101,7 @@ variables:
       "platform-tools"
       "platforms;android-37.0"
       "skiaparser;3"
+      "system-images;android-35;default;x86_64"
       "tools"
       ; do
         ./sdkmanager.py $package;
