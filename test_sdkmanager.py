@@ -139,8 +139,8 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
             ('cmake;3.10.2.4988404', 'cmake-3.10.2-linux-x86_64.zip', (3, 10, 2)),
             ('ndk;22.1.7171670', 'android-ndk-r22b-linux-x86_64.zip', (22, 1, 7171670)),
             ('ndk;r10e', 'android-ndk-r10e-linux-x86_64.zip', (10, 4)),
-            ('platforms;android-33', 'platform-33_r02.zip', (2, )),
-            ('system-images;android-35;default;x86_64', 'platform-33_r02.zip', (2, )),
+            ('platforms;android-33', 'platform-33_r02.zip', (2,)),
+            ('system-images;android-35;default;x86_64', 'platform-33_r02.zip', (2,)),
         ):
             install_dir = self.sdk_dir / 'install_dir' / package.split(';')[0]
             install_dir.mkdir(parents=True, exist_ok=True)
@@ -525,8 +525,8 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
         """Exercise this function with all the source.properties in checksums.json."""
         with (self.tests_dir / 'checksums.json').open() as fp:
             checksums = json.load(fp)
-        for l in checksums.values():
-            for i in l:
+        for il in checksums.values():
+            for i in il:
                 spstr = i.get('source.properties')
                 if not spstr:
                     continue
@@ -597,6 +597,7 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
                 self._get_package_xml(url, 'system-images;android-36;default;arm64-v8a')
             ),
             self._standardize(
-                self.tests_dir / 'system-images_android-36_default_arm64-v8a_package.xml'
+                self.tests_dir
+                / 'system-images_android-36_default_arm64-v8a_package.xml'
             ),
         )

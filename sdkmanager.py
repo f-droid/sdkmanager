@@ -1082,7 +1082,7 @@ def _process_checksums(checksums):
         elif basename.startswith('tools') or basename.startswith('sdk-tools-'):
             for entry in checksums[url]:
                 parse_tools(url, entry)
-        elif url.split('/')[5] =='sys-img':
+        elif url.split('/')[5] == 'sys-img':
             for entry in checksums[url]:
                 parse_system_images(url, entry)
 
