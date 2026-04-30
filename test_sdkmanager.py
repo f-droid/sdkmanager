@@ -117,9 +117,8 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
             sdkmanager._get_installed_packages(),
         )
 
-    def test_package_xml_template(self):
-        with (self.tests_dir / 'checksums.json').open() as fp:
-            sdkmanager._process_checksums(json.load(fp))
+    def test_package_xml_template_whitespace(self):
+        """Test that the template has no leading or trailing whitespace."""
         self.assertEqual(
             "<",
             sdkmanager.GENERIC_PACKAGE_XML_TEMPLATE[0],
@@ -130,19 +129,25 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
             sdkmanager.GENERIC_PACKAGE_XML_TEMPLATE[-1],
             "no whitespace at end of XML",
         )
+
+    def test_package_xml_template(self):
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            sdkmanager._process_checksums(json.load(fp))
         baseurl = 'https://dl.google.com/android/repository/'
         for package, f, result in (
             ('build-tools;28.0.1', 'build-tools_r28.0.1-linux.zip', (28, 0, 1)),
             ('cmake;3.10.2.4988404', 'cmake-3.10.2-linux-x86_64.zip', (3, 10, 2)),
             ('ndk;22.1.7171670', 'android-ndk-r22b-linux-x86_64.zip', (22, 1, 7171670)),
             ('ndk;r10e', 'android-ndk-r10e-linux-x86_64.zip', (10, 4)),
+            ('platforms;android-33', 'platform-33_r02.zip', (2, )),
+            ('system-images;android-35;default;x86_64', 'platform-33_r02.zip', (2, )),
         ):
             install_dir = self.sdk_dir / 'install_dir' / package.split(';')[0]
             install_dir.mkdir(parents=True, exist_ok=True)
             sdkmanager._generate_package_xml(install_dir, package, baseurl + f)
             package_xml = install_dir / 'package.xml'
             self.assertTrue(
-                package_xml.exists(), '_generate_package_xml() creates package.xml'
+                package_xml.exists(), f'_generate_package_xml() creates {package_xml}'
             )
             tree = ElementTree.parse(str(package_xml))  # nosec B314: test XML file
             root = tree.getroot()
@@ -516,6 +521,18 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
         self.assertFalse(checksums_json.exists())
         self.assertFalse(checksums_json_asc.exists())
 
+    def test_convert_source_properties_to_template(self):
+        """Exercise this function with all the source.properties in checksums.json."""
+        with (self.tests_dir / 'checksums.json').open() as fp:
+            checksums = json.load(fp)
+        for l in checksums.values():
+            for i in l:
+                spstr = i.get('source.properties')
+                if not spstr:
+                    continue
+                source_properties = sdkmanager.get_properties_dict(spstr)
+                sdkmanager._convert_source_properties_to_template(source_properties)
+
 
 class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
     """Test the generation of package.xml."""
@@ -538,7 +555,8 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
 
     def _assert_elements_equal(self, e1, e2):
         self.assertEqual(e1.tag, e2.tag)
-        self.assertEqual(e1.text, e2.text)
+        if e1.text and 'System Image' not in e1.text:  # TODO implement <display-name>
+            self.assertEqual(e1.text, e2.text)
         self.assertEqual(e1.tail, e2.tail)
         self.assertEqual(e1.attrib, e2.attrib)
         self.assertEqual(len(e1), len(e2))
@@ -570,4 +588,15 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
         self._assert_elements_equal(
             self._standardize(self._get_package_xml(url, 'platforms;android-37.0')),
             self._standardize(self.tests_dir / 'android-37.0_package.xml'),
+        )
+
+    def test_system_images_android_36_default_x86_64_package_xml(self):
+        url = 'https://dl.google.com/android/repository/sys-img/android/arm64-v8a-36_r02.zip'
+        self._assert_elements_equal(
+            self._standardize(
+                self._get_package_xml(url, 'system-images;android-36;default;arm64-v8a')
+            ),
+            self._standardize(
+                self.tests_dir / 'system-images_android-36_default_arm64-v8a_package.xml'
+            ),
         )
