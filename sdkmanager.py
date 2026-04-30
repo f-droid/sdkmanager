@@ -66,8 +66,12 @@ BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
 NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?(?:-(?:rc|beta)[0-9]+)?')
 M2REPOSITORY_REVISION_REGEX = re.compile(r'android_m2repository_r([0-9]+)\.zip')
 
-# The sub-directory to install a given package into, assumes ANDROID_SDK_ROOT as root
+# The sub-directory to install a given package into, assumes ANDROID_HOME as root
 # https://developer.android.com/studio/command-line/
+#
+# The base directories are hard coded:
+# https://android.googlesource.com/platform/tools/base/+/2a5cb6330f399286bf193b7b0c098766e4701f8a/common/src/main/java/com/android/SdkConstants.java#508
+# https://android.googlesource.com/platform/tools/base/+/2a5cb6330f399286bf193b7b0c098766e4701f8a/sdklib/src/main/java/com/android/sdklib/repository/meta/DetailsTypes.java#550
 INSTALL_DIRS = {
     'build-tools': 'build-tools/{revision}',
     'cmake': 'cmake/{revision}',
@@ -78,6 +82,7 @@ INSTALL_DIRS = {
     'platforms': 'platforms/{revision}',
     'platform-tools': 'platform-tools',
     'skiaparser': 'skiaparser/{revision}',
+    'system-images': 'system-images/android-{apilevel}/{tag_id}/{abi}',  # unused
     'tools': 'tools',
     'extras;android;m2repository': 'extras/android/m2repository',
 }
@@ -110,6 +115,7 @@ GENERIC_PACKAGE_XML_TEMPLATE = textwrap.dedent(
         <revision>{revision}</revision>
         <display-name>{display_name}</display-name>
         <uses-license ref="{license_id}"/>
+        {dependencies}
       </localPackage>
     </ns2:repository>
 """
@@ -135,6 +141,32 @@ SOURCE_TYPE_DETAILS_TEMPLATE = """
       <extension-level>{extension_level}</extension-level>
       <base-extension>{is_base_sdk}</base-extension>
     </type-details>
+""".strip()
+
+SYSTEM_IMAGES_TYPE_DETAILS_TEMPLATE = """
+    <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns12:sysImgDetailsType">
+        <api-level>{api_level}</api-level>
+        <extension-level>{extension_level}</extension-level>
+        <base-extension>{is_base_sdk}</base-extension>
+        <tag>
+            <id>{tag_id}</id>
+            <display>{tag_display}</display>
+        </tag>
+        <abi>{abi}</abi>
+        <abis>{abi}</abis>
+    </type-details>
+""".strip()
+
+SYSTEM_IMAGES_DEPENDENCIES_TEMPLATE = """
+    <dependencies>
+        <dependency path="{dependency_path}">
+            <min-revision>
+                <major>{major}</major>
+                <minor>{minor}</minor>
+                <micro>{micro}</micro>
+            </min-revision>
+        </dependency>
+    </dependencies>
 """.strip()
 
 USAGE = """
@@ -563,6 +595,7 @@ UeoNaY215eCZI12lp5pySjqSVt2rcJb1dzXp39Wk/1pN+nfJ098lT/+vlzz9XT36d/Xo/wfVo38X5v9d
 PACKAGES = {}
 REVISIONS = {}
 PLATFORM_VERSIONS = {}
+SYSTEM_IMAGE_VERSIONS = {}
 SOURCE_PROPERTIES = {}
 
 
@@ -678,12 +711,33 @@ def _add_to_revisions(url, source_properties):
 
 
 def _convert_source_properties_to_template(source_properties):
+    if not source_properties:
+        return {}
+    # example of Pkg.Dependencies: emulator#35.4.9
+    dependencies = source_properties.get('pkg.dependencies', '').split('#')
+    path = dependencies[0]
+    major = minor = micro = '0'
+    if len(dependencies) > 1:
+        v = dependencies[1].split('.')
+        major = v[0]
+        if len(v) > 1:
+            minor = v[1]
+        if len(v) > 2:
+            micro = v[2]
+
     return {
         'api_level': source_properties.get('androidversion.apilevel'),
         'codename': source_properties.get('androidversion.codename', ''),
         'extension_level': source_properties.get('androidversion.extensionlevel'),
         'is_base_sdk': source_properties.get('androidversion.isbasesdk'),
         'layoutlib_api': source_properties.get('layoutlib.api'),
+        'abi': source_properties.get('systemimage.abi'),
+        'tag_id': source_properties.get('systemimage.tagid'),
+        'tag_display': source_properties.get('systemimage.tagdisplay'),
+        'dependency_path': path,
+        'major': major,
+        'minor': minor,
+        'micro': micro,
     }
 
 
@@ -853,6 +907,30 @@ def parse_platform_tools(url, d):
     PACKAGES[('platform-tools',)] = PACKAGES[('platform-tools', highest)]
 
 
+def parse_system_images(url, d):
+    """Parse system-images and choose the URL with the highest release number."""
+    if 'source.properties' in d:
+        source_properties = get_properties_dict(d['source.properties'])
+        _add_to_revisions(url, source_properties)
+        apilevel = source_properties['androidversion.apilevel']
+        revision = source_properties.get('pkg.revision')
+        abi = source_properties.get('systemimage.abi', 'armeabi-v7a')
+        tag_id = source_properties.get('systemimage.tagid', 'default')
+        # TODO this should make all versions/revisions available, not only most recent
+        key = ('system-images', f'android-{apilevel}', tag_id, abi)
+        vstring = '%s.%s' % (apilevel, revision)
+        if re.match(r'^[1-9].*', vstring):
+            if key not in SYSTEM_IMAGE_VERSIONS:
+                SYSTEM_IMAGE_VERSIONS[key] = []
+            system_image_version = LooseVersion(vstring)
+            SYSTEM_IMAGE_VERSIONS[key].append(system_image_version)
+            if key in PACKAGES:
+                if system_image_version == sorted(SYSTEM_IMAGE_VERSIONS[key])[-1]:
+                    PACKAGES[key] = url
+            else:
+                PACKAGES[key] = url
+
+
 def parse_tools(url, d):
     """Find all tools packages and set highest version as 'tools'"""
     if 'source.properties' in d:
@@ -1009,6 +1087,9 @@ def _process_checksums(checksums):
         elif basename.startswith('tools') or basename.startswith('sdk-tools-'):
             for entry in checksums[url]:
                 parse_tools(url, entry)
+        elif url.split('/')[5] == 'sys-img':
+            for entry in checksums[url]:
+                parse_system_images(url, entry)
 
 
 def licenses():
@@ -1104,7 +1185,9 @@ def install(to_install, android_home=None):
         else:
             name = key[0]
 
-        if len(key) > 1:
+        if name == 'system-images':
+            install_dir = android_home / package.replace(';', '/')
+        elif len(key) > 1:
             if key[0] == 'ndk':
                 revision = NDK_REVISIONS.get(key[-1], key[-1])
             else:
@@ -1191,7 +1274,7 @@ def _generate_package_xml(install_dir, package, url):
 
     """
     package_base = package.split(';')[0]
-    if package_base in ('extras', 'system-images'):
+    if package_base == 'extras':
         return
 
     source_properties = SOURCE_PROPERTIES.get(url)
@@ -1211,6 +1294,9 @@ def _generate_package_xml(install_dir, package, url):
     elif package_base == 'sources':
         type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
         display_name = f'Sources for Android {spt["api_level"]}'
+    elif package_base == 'system-images':
+        type_details = SYSTEM_IMAGES_TYPE_DETAILS_TEMPLATE.format(**spt)
+        display_name = 'System Image'
     elif package_base == 'ndk':
         package = f"ndk;{revision_name}"
         display_name = f'NDK (Side by side) {revision_name}'
@@ -1227,9 +1313,15 @@ def _generate_package_xml(install_dir, package, url):
     if package_base in ('emulator', 'ndk-bundle', 'tools'):
         package = package_base
 
+    if spt.get('dependency_path'):
+        dependencies = SYSTEM_IMAGES_DEPENDENCIES_TEMPLATE.format(**spt)
+    else:
+        dependencies = ''
+
     template = ('<major>{0}</major>', '<minor>{1}</minor>', '<micro>{2}</micro>')
     r = min(3, len(revision))
     d = {
+        'dependencies': dependencies,
         'display_name': display_name,
         'license': ANDROID_SDK_LICENSE,
         'license_id': 'android-sdk-license',
