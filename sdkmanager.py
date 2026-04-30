@@ -66,8 +66,12 @@ BUILD_REGEX = re.compile(r'[1-9][0-9]{6}')
 NDK_RELEASE_REGEX = re.compile(r'r[1-9][0-9]?[a-z]?(?:-(?:rc|beta)[0-9]+)?')
 M2REPOSITORY_REVISION_REGEX = re.compile(r'android_m2repository_r([0-9]+)\.zip')
 
-# The sub-directory to install a given package into, assumes ANDROID_SDK_ROOT as root
+# The sub-directory to install a given package into, assumes ANDROID_HOME as root
 # https://developer.android.com/studio/command-line/
+#
+# The base directories are hard coded:
+# https://android.googlesource.com/platform/tools/base/+/2a5cb6330f399286bf193b7b0c098766e4701f8a/common/src/main/java/com/android/SdkConstants.java#508
+# https://android.googlesource.com/platform/tools/base/+/2a5cb6330f399286bf193b7b0c098766e4701f8a/sdklib/src/main/java/com/android/sdklib/repository/meta/DetailsTypes.java#550
 INSTALL_DIRS = {
     'build-tools': 'build-tools/{revision}',
     'cmake': 'cmake/{revision}',
@@ -78,6 +82,7 @@ INSTALL_DIRS = {
     'platforms': 'platforms/{revision}',
     'platform-tools': 'platform-tools',
     'skiaparser': 'skiaparser/{revision}',
+    'system-images': 'system-images/android-{apilevel}/{tag_id}/{abi}',  # unused
     'tools': 'tools',
     'extras;android;m2repository': 'extras/android/m2repository',
 }
@@ -1180,7 +1185,9 @@ def install(to_install, android_home=None):
         else:
             name = key[0]
 
-        if len(key) > 1:
+        if name == 'system-images':
+            install_dir = android_home / package.replace(';', '/')
+        elif len(key) > 1:
             if key[0] == 'ndk':
                 revision = NDK_REVISIONS.get(key[-1], key[-1])
             else:

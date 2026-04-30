@@ -140,7 +140,7 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
             ('ndk;22.1.7171670', 'android-ndk-r22b-linux-x86_64.zip', (22, 1, 7171670)),
             ('ndk;r10e', 'android-ndk-r10e-linux-x86_64.zip', (10, 4)),
             ('platforms;android-33', 'platform-33_r02.zip', (2,)),
-            ('system-images;android-35;default;x86_64', 'platform-33_r02.zip', (2,)),
+            ('system-images;android-35;default;x86_64', 'sys-img/android/x86_64-36_r02.zip', (2,)),
         ):
             install_dir = self.sdk_dir / 'install_dir' / package.split(';')[0]
             install_dir.mkdir(parents=True, exist_ok=True)
