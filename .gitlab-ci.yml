@@ -13,6 +13,7 @@ workflow:
 
 stages:
   - lint
+  - main  # the main platforms sdkmanager is used and developed on
   - test  # default for jobs that do not specify stage:
 
 
@@ -212,6 +213,21 @@ test pip forky:
     - *pip-test-template
     - *test-template
 
+test pip Python 3.14:
+  stage: main
+  image: python:3.14-slim-trixie
+  <<: *apt-template
+  script:
+    - *pip-test-template
+    - *test-template
+
+test pip Python 3.15:
+  image: python:3.15-rc-slim
+  <<: *apt-template
+  script:
+    - *pip-test-template
+    - *test-template
+
 test bullseye:
   image: debian:bullseye-slim
   <<: *apt-template
@@ -220,13 +236,14 @@ test bullseye:
     - *test-template
 
 test bookworm:
-  image: debian:bookworm
+  image: debian:bookworm-slim
   <<: *apt-template
   script:
     - *apt-test-template
     - *test-template
 
 test trixie:
+  stage: main
   image: debian:trixie-slim
   <<: *apt-template
   script:
