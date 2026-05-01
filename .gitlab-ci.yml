@@ -13,6 +13,7 @@ workflow:
 
 stages:
   - lint
+  - main  # the main platforms sdkmanager is used and developed on
   - test  # default for jobs that do not specify stage:
 
 
@@ -220,13 +221,14 @@ test bullseye:
     - *test-template
 
 test bookworm:
-  image: debian:bookworm
+  image: debian:bookworm-slim
   <<: *apt-template
   script:
     - *apt-test-template
     - *test-template
 
 test trixie:
+  stage: main
   image: debian:trixie-slim
   <<: *apt-template
   script:
