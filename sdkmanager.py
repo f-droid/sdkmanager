@@ -871,7 +871,11 @@ def parse_platforms(url, d):
         _add_to_revisions(url, source_properties)
         apilevel = source_properties['androidversion.apilevel']
         # TODO this should make all versions/revisions available, not only most recent
-        key = ('platforms', 'android-%s' % apilevel)
+        if source_properties.get('androidversion.isbasesdk') != 'false':
+            key = ('platforms', f'android-{apilevel}')
+        else:
+            ext = source_properties.get('androidversion.extensionlevel')
+            key = ('platforms', f'android-{apilevel}-ext{ext}')
         vstring = '%s.%s' % (
             source_properties.get('platform.version'),
             source_properties.get('pkg.revision'),
