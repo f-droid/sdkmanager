@@ -206,6 +206,13 @@ class SdkManagerTest(SetUpTearDownMixin, unittest.TestCase):
         url = 'https://dl.google.com/android/repository/platform-36_r02.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36')])
         self.assertEqual((2,), sdkmanager.REVISIONS[url])
+        # This has AndroidVersion.ExtensionLevel=17 but is not an "SDK
+        # Extension" because AndroidVersion.IsBaseSdk=true
+        self.assertFalse(('platforms', 'android-36-ext17') in sdkmanager.PACKAGES)
+
+        url = 'https://dl.google.com/android/repository/platform-36-ext19_r01.zip'
+        self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36-ext19')])
+        self.assertEqual((1,), sdkmanager.REVISIONS[url])
 
         url = 'https://dl.google.com/android/repository/platform-36.1_r01.zip'
         self.assertEqual(url, sdkmanager.PACKAGES[('platforms', 'android-36.1')])
