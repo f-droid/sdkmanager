@@ -560,9 +560,32 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
         return install_dir / 'package.xml'
 
     def _standardize(self, package_xml_path):
+        """Standardize the XML format for easy comparison.
+
+        For whatever reason, there are a handful of packages where
+        Google's sdkmanager omits the `<codename></codename>`, but that
+        shouldn't affect the functionality.
+
+        """
+        print('_standardize', package_xml_path)
         tree = ElementTree.parse(package_xml_path)  # nosec B314: test XML file
         ElementTree.indent(tree, space="", level=0)
-        return tree.getroot()
+        root = tree.getroot()
+        if package_xml_path.parent.name in (
+            'android-34-ext11',
+            'android-34-ext12',
+            'android-35',
+            'android-35-ext14',
+            'android-35-ext15',
+            'android-36',
+            'android-36-ext18',
+            'android-36-ext19',
+            'android-36.1',
+        ):
+            for type_details in root.findall('.//localPackage/type-details'):
+                for codename in type_details.findall('.//codename'):
+                    type_details.remove(codename)
+        return root
 
     def _assert_elements_equal(self, e1, e2):
         self.assertEqual(e1.tag, e2.tag)
@@ -587,6 +610,13 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
             self._standardize(self.tests_dir / 'ndk-23.1.7779620_package.xml'),
         )
 
+    def test_platforms_30_package_xml(self):
+        url = 'https://dl.google.com/android/repository/platform-30_r03.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'platforms;android-30')),
+            self._standardize(self.tests_dir / 'android-30_package.xml'),
+        )
+
     def test_platforms_33_package_xml(self):
         url = 'https://dl.google.com/android/repository/platform-33-ext3_r03.zip'
         self._assert_elements_equal(
@@ -599,6 +629,13 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
         self._assert_elements_equal(
             self._standardize(self._get_package_xml(url, 'platforms;android-37.0')),
             self._standardize(self.tests_dir / 'android-37.0_package.xml'),
+        )
+
+    def test_platforms_36_ext19_package_xml(self):
+        url = 'https://dl.google.com/android/repository/platform-36-ext19_r01.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'platforms;android-36-ext19')),
+            self._standardize(self.tests_dir / 'android-36-ext19_package.xml'),
         )
 
     def test_system_images_android_36_default_x86_64_package_xml(self):
