@@ -610,6 +610,13 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
             self._standardize(self.tests_dir / 'ndk-23.1.7779620_package.xml'),
         )
 
+    def test_platforms_30_package_xml(self):
+        url = 'https://dl.google.com/android/repository/platform-30_r03.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'platforms;android-30')),
+            self._standardize(self.tests_dir / 'android-30_package.xml'),
+        )
+
     def test_platforms_33_package_xml(self):
         url = 'https://dl.google.com/android/repository/platform-33-ext3_r03.zip'
         self._assert_elements_equal(
@@ -622,6 +629,13 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
         self._assert_elements_equal(
             self._standardize(self._get_package_xml(url, 'platforms;android-37.0')),
             self._standardize(self.tests_dir / 'android-37.0_package.xml'),
+        )
+
+    def test_platforms_36_ext19_package_xml(self):
+        url = 'https://dl.google.com/android/repository/platform-36-ext19_r01.zip'
+        self._assert_elements_equal(
+            self._standardize(self._get_package_xml(url, 'platforms;android-36-ext19')),
+            self._standardize(self.tests_dir / 'android-36-ext19_package.xml'),
         )
 
     def test_system_images_android_36_default_x86_64_package_xml(self):
