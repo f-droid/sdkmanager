@@ -128,8 +128,7 @@ PLATFORM_TYPE_DETAILS_TEMPLATE = """
     <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns8:platformDetailsType">
       <api-level>{api_level}</api-level>
       <codename>{codename}</codename>
-      <extension-level>{extension_level}</extension-level>
-      <base-extension>{is_base_sdk}</base-extension>
+      {extension}
       <layoutlib api="{layoutlib_api}"/>
     </type-details>
 """.strip()
@@ -138,16 +137,14 @@ SOURCE_TYPE_DETAILS_TEMPLATE = """
     <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns8:sourceDetailsType">
       <api-level>{api_level}</api-level>
       <codename>{codename}</codename>
-      <extension-level>{extension_level}</extension-level>
-      <base-extension>{is_base_sdk}</base-extension>
+      {extension}
     </type-details>
 """.strip()
 
 SYSTEM_IMAGES_TYPE_DETAILS_TEMPLATE = """
     <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ns12:sysImgDetailsType">
         <api-level>{api_level}</api-level>
-        <extension-level>{extension_level}</extension-level>
-        <base-extension>{is_base_sdk}</base-extension>
+        {extension}
         <tag>
             <id>{tag_id}</id>
             <display>{tag_display}</display>
@@ -725,11 +722,25 @@ def _convert_source_properties_to_template(source_properties):
         if len(v) > 2:
             micro = v[2]
 
+    extension_level = source_properties.get('androidversion.extensionlevel')
+    is_base_sdk = source_properties.get('androidversion.isbasesdk', 'true')
+
+    extension = (
+        f"<extension-level>{extension_level}</extension-level>"
+        if extension_level
+        else ''
+    )
+    extension += f"<base-extension>{is_base_sdk}</base-extension>"
+
+    api_level = source_properties.get('androidversion.apilevel')
+    display_version = api_level
+    if is_base_sdk == 'false':
+        api_level += 'x'
+        display_version += f"-ext{extension_level}"
+
     return {
-        'api_level': source_properties.get('androidversion.apilevel'),
+        'desc': source_properties.get('pkg.desc'),
         'codename': source_properties.get('androidversion.codename', ''),
-        'extension_level': source_properties.get('androidversion.extensionlevel'),
-        'is_base_sdk': source_properties.get('androidversion.isbasesdk'),
         'layoutlib_api': source_properties.get('layoutlib.api'),
         'abi': source_properties.get('systemimage.abi'),
         'tag_id': source_properties.get('systemimage.tagid'),
@@ -738,6 +749,9 @@ def _convert_source_properties_to_template(source_properties):
         'major': major,
         'minor': minor,
         'micro': micro,
+        'extension': extension,
+        'api_level': api_level,
+        'display_version': display_version,
     }
 
 
@@ -1294,10 +1308,10 @@ def _generate_package_xml(install_dir, package, url):
     display_name = ''
     if package_base == 'platforms':
         type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
-        display_name = f'Android SDK Platform {spt["api_level"]}'
+        display_name = f'Android SDK Platform {spt["display_version"]}'
     elif package_base == 'sources':
         type_details = PLATFORM_TYPE_DETAILS_TEMPLATE.format(**spt)
-        display_name = f'Sources for Android {spt["api_level"]}'
+        display_name = f'Sources for Android {spt["display_version"]}'
     elif package_base == 'system-images':
         type_details = SYSTEM_IMAGES_TYPE_DETAILS_TEMPLATE.format(**spt)
         display_name = 'System Image'
@@ -1311,7 +1325,7 @@ def _generate_package_xml(install_dir, package, url):
     elif package_base == 'platform-tools':
         display_name = 'Android SDK Platform-Tools'
     elif package_base == 'skiaparser':
-        display_name = source_properties.get('pkg.desc')
+        display_name = spt["desc"]
 
     # These packages should never have the version in the path.
     if package_base in ('emulator', 'ndk-bundle', 'tools'):
