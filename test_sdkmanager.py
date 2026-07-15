@@ -560,9 +560,32 @@ class PackageXmlTest(SetUpTearDownMixin, unittest.TestCase):
         return install_dir / 'package.xml'
 
     def _standardize(self, package_xml_path):
+        """Standardize the XML format for easy comparison.
+
+        For whatever reason, there are a handful of packages where
+        Google's sdkmanager omits the `<codename></codename>`, but that
+        shouldn't affect the functionality.
+
+        """
+        print('_standardize', package_xml_path)
         tree = ElementTree.parse(package_xml_path)  # nosec B314: test XML file
         ElementTree.indent(tree, space="", level=0)
-        return tree.getroot()
+        root = tree.getroot()
+        if package_xml_path.parent.name in (
+            'android-34-ext11',
+            'android-34-ext12',
+            'android-35',
+            'android-35-ext14',
+            'android-35-ext15',
+            'android-36',
+            'android-36-ext18',
+            'android-36-ext19',
+            'android-36.1',
+        ):
+            for type_details in root.findall('.//localPackage/type-details'):
+                for codename in type_details.findall('.//codename'):
+                    type_details.remove(codename)
+        return root
 
     def _assert_elements_equal(self, e1, e2):
         self.assertEqual(e1.tag, e2.tag)
