@@ -871,10 +871,13 @@ def parse_platforms(url, d):
     e.g. platforms;android-29, but there are multiple releases
     available, e.g. platform-29_r05.zip, platform-29_r04.zip, etc.
 
-    The build property ro.build.version.codename with the value of REL
-    means a full release, rather than preview/beta/etc.  That value
-    was not always present, but those releases oly hve a single
-    package.
+    Release versions of the Android platform are identified by their API
+    level (integer), and extension level if present. (technically the
+    code name for release version is "REL" but this class will return a
+    empty string instead.)  Preview versions of the platform are
+    identified by a code name. Their API level is usually set to the
+    value of the previous platform.
+    https://android.googlesource.com/platform/tools/base/+/1fd0588c0b284453faea362de4d22b2c5e5f1a70/common/src/main/java/com/android/sdklib/AndroidVersion.java#41
 
     platform24_r01.zip was released twice, the first being a mistake
     with a platform.version of 'N' in source.properties.
@@ -890,18 +893,25 @@ def parse_platforms(url, d):
         else:
             ext = source_properties.get('androidversion.extensionlevel')
             key = ('platforms', f'android-{apilevel}-ext{ext}')
-        vstring = '%s.%s' % (
-            source_properties.get('platform.version'),
-            source_properties.get('pkg.revision'),
-        )
-        if re.match(r'^[1-9].*', vstring):
+        # Google botched the metadata in some packages on release
+        platform_version = source_properties.get('platform.version')
+        if platform_version == 'N':
+            platform_version = '7.0'
+        vstring = '%s.%s' % (platform_version, source_properties.get('pkg.revision'))
+        if not source_properties.get('androidversion.codename'):
             if key not in PLATFORM_VERSIONS:
                 PLATFORM_VERSIONS[key] = []
             platform_version = LooseVersion(vstring)
             PLATFORM_VERSIONS[key].append(platform_version)
             if key in PACKAGES:
-                if platform_version == sorted(PLATFORM_VERSIONS[key])[-1]:
-                    PACKAGES[key] = url
+                try:
+                    if platform_version == sorted(PLATFORM_VERSIONS[key])[-1]:
+                        PACKAGES[key] = url
+                except TypeError:
+                    print(
+                        'WARNING:',
+                        f'Skipping {url}, has bad Platform.Version "{vstring}"',
+                    )
             else:
                 PACKAGES[key] = url
 
