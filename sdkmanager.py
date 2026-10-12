@@ -1455,7 +1455,7 @@ def main():
     if command is None:
         command = 'install'
     elif command == 'version':
-        print('25.2.0')
+        print('20.0\n')
         sys.exit()
 
     method = globals().get(command)
