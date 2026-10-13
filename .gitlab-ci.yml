@@ -85,10 +85,7 @@ variables:
   - timeout 120 ./sdkmanager.py --licenses  # now there should be unaccepted licenses
 
   - apt-get update
-  #  cmdline-tools;20.0 requires Java 17+
-  - grep bullseye /etc/os-release
-      && apt-get install openjdk-17-jdk-headless
-      || apt-get install default-jdk-headless
+  - apt-get install default-jdk-headless
 
   - export ver=20.0
   - ./sdkmanager.py "cmdline-tools;${ver}"
@@ -226,13 +223,6 @@ test pip Python 3.15:
   <<: *apt-template
   script:
     - *pip-test-template
-    - *test-template
-
-test bullseye:
-  image: debian:bullseye-slim
-  <<: *apt-template
-  script:
-    - *apt-test-template
     - *test-template
 
 test bookworm:
